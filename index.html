@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173d2b">
+  <meta name="description" content="Browse the Adbhutaaharam digital restaurant menu.">
+  <title>Digital Menu | Adbhutaaharam</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="index.html" aria-label="Adbhutaaharam menu home">
+        <span><strong>Adbhutaaharam</strong><small>Regional Flavours Of South</small></span>
+      </a>
+      <span class="header-tag">Scan · Browse · Enjoy</span>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero landing-hero" aria-labelledby="landingTitle">
+      <div class="landing-copy">
+        <p class="eyebrow">WELCOME TO</p>
+        <h1 id="landingTitle">Adbhutaaharam</h1>
+        <p class="landing-tagline">Regional Flavours Of South</p>
+        <p class="hero-copy">Explore our menu, choose your favourites, and let your waiter know what you would like.</p>
+        <a class="button primary-button view-menu-button" href="#menuSection">View Menu <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="cover-art-wrap">
+        <img class="cover-art" src="assets/adbhutaaharam-cover.jpg" alt="Adbhutaaharam menu cover with the restaurant emblem and food photography" fetchpriority="high">
+      </div>
+    </section>
+
+    <section id="menuSection" class="menu-section" aria-label="Restaurant menu">
+    <section class="menu-tools" aria-label="Menu categories">
+      <p class="section-hint">Choose a category to browse, then tell your choices to your waiter.</p>
+      <div id="categoryFilters" class="category-filters" aria-label="Browse menu categories"></div>
+    </section>
+
+    <div id="menuStatus" class="status-message" role="status">Loading menu…</div>
+    <section id="menuGrid" class="menu-grid" aria-label="Menu items"></section>
+    </section>
+
+    <footer class="site-footer">
+      <p><strong>Adbhutaaharam</strong></p>
+      <p>2nd Floor, Raidurgam, Navakalsha Village, Hyderabad, Telangana 500008</p>
+      <p class="footer-note">Please tell your selected dishes to your waiter. Thank you for dining with us.</p>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/config.js"></script>
+  <script src="js/menu.js"></script>
+</body>
+</html>
