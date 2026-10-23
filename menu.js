@@ -2,8 +2,10 @@
   const grid = document.getElementById("menuGrid");
   const status = document.getElementById("menuStatus");
   const filters = document.getElementById("categoryFilters");
+  const searchInput = document.getElementById("menuSearch");
   let items = [];
   let activeCategory = "All";
+  let searchTerm = "";
 
   const config = window.APP_CONFIG || {};
   const configured = config.supabaseUrl && config.supabaseAnonKey &&
@@ -33,11 +35,16 @@
   }
 
   function renderItems() {
-    const visible = items.filter(item => activeCategory === "All" || item.category === activeCategory);
+    const visible = items.filter(item => {
+      const text = `${item.name || ""} ${item.category || ""} ${item.description || ""}`.toLowerCase();
+      const matchesSearch = text.includes(searchTerm);
+      const matchesCategory = activeCategory === "All" || item.category === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
 
     if (!visible.length) {
       grid.innerHTML = "";
-      showStatus(items.length ? "No dishes are listed in this category yet. Please ask your waiter for assistance." : "The digital menu is being prepared. Please ask restaurant staff for the current menu.");
+      showStatus(items.length ? "No dishes match your search or selected category. Try another search or category." : "The digital menu is being prepared. Please ask restaurant staff for the current menu.");
       return;
     }
 
@@ -53,6 +60,13 @@
         ${description}<div class="dish-meta"><span class="pill">${escapeHTML(item.category)}</span>${item.is_must_try ? '<span class="pill must-try">Must Try</span>' : ""}${veg}</div>
       </div></article>`;
     }).join("");
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      searchTerm = searchInput.value.trim().toLowerCase();
+      renderItems();
+    });
   }
 
   filters.addEventListener("click", event => {
