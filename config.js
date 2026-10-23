@@ -1,11 +1,8 @@
-/*
-  SETUP REQUIRED:
-  1. Create a project at https://supabase.com/
-  2. In Project Settings -> API, copy the Project URL and anon/public key.
-  3. Paste them below.
-  Never put a Supabase service_role key in browser code.
-*/
-window.APP_CONFIG = {
-  supabaseUrl: "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE",
-  supabaseAnonKey: "PASTE_YOUR_SUPABASE_ANON_KEY_HERE"
-};
+
+const SUPABASE_URL = "https://nswbbkvtyksdmttlfhhg.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_ihkx-MrGeGpc_q4RBbCiow_w9VXKwlM";
+
+const supabaseClient = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_PUBLISHABLE_KEY
+);
