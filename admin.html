@@ -61,6 +61,11 @@
         </form>
       </section>
 
+      <section class="admin-menu-tools" aria-label="Search and filter menu items">
+        <label>Search menu items<input id="adminSearch" type="search" placeholder="Search by dish name..." autocomplete="off"></label>
+        <label>Filter by category<select id="adminCategoryFilter"><option value="All">All categories</option></select></label>
+        <p id="adminFilterCount" class="muted small"></p>
+      </section>
       <div id="adminItems" class="admin-items"></div>
     </section>
 
