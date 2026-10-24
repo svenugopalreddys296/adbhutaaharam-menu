@@ -69,9 +69,17 @@
             <input id="itemName" required maxlength="100" placeholder="Enter the actual dish name">
           </label>
 
+          <label for="itemMainCategory">
+            Main category *
+            <select id="itemMainCategory" required>
+              <option value="Food">Food</option>
+              <option value="Drinks">Drinks</option>
+            </select>
+          </label>
+
           <label for="itemCategory">
-            Category *
-            <input id="itemCategory" required maxlength="60" placeholder="Enter the dish category">
+            Subcategory *
+            <select id="itemCategory" required></select>
           </label>
 
           <label for="itemPrice">
