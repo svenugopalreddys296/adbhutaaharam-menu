@@ -17,6 +17,8 @@
   const itemImagePreviewWrap = document.getElementById("itemImagePreviewWrap");
   const itemImagePreviewLabel = document.getElementById("itemImagePreviewLabel");
   const removeItemImageButton = document.getElementById("removeItemImageButton");
+  const itemMainCategory = document.getElementById("itemMainCategory");
+  const itemCategory = document.getElementById("itemCategory");
   const adminSearch = document.getElementById("adminSearch");
   const adminCategoryFilter = document.getElementById("adminCategoryFilter");
   const adminFilterCount = document.getElementById("adminFilterCount");
@@ -106,9 +108,33 @@
     showImagePreview(currentImageUrl, currentImageUrl ? "Current saved image" : "No image selected");
   }
 
+  const foodSubcategories = ["Bestsellers", "Soups", "Veg Starters", "Non-Veg Starters", "Veg Biryani", "Non-Veg Biryani", "Veg Curries", "Non-Veg Curries", "Breads", "Rice & Noodles", "Desserts", "Other"];
+  const drinkSubcategories = ["Bestsellers", "Fresh Juices", "Milkshakes", "Mojitos", "Cool Drinks", "Hot Beverages", "Tea & Coffee", "Other"];
+
+  function updateSubcategoryOptions(selected = "") {
+    if (!itemCategory || !itemMainCategory) return;
+    const options = itemMainCategory.value === "Drinks" ? drinkSubcategories : foodSubcategories;
+    itemCategory.replaceChildren();
+    options.forEach(category => {
+      const option = document.createElement("option");
+      option.value = category;
+      option.textContent = category;
+      itemCategory.appendChild(option);
+    });
+    if (selected && !options.includes(selected)) {
+      const option = document.createElement("option");
+      option.value = selected;
+      option.textContent = selected;
+      itemCategory.appendChild(option);
+    }
+    itemCategory.value = selected || options[0];
+  }
+
   function resetForm() {
     itemForm.reset();
     document.getElementById("itemId").value = "";
+    if (itemMainCategory) itemMainCategory.value = "Food";
+    updateSubcategoryOptions("Bestsellers");
     currentImageUrl = null;
     showImagePreview(null);
     formHeading.textContent = "Add a menu item";
@@ -368,6 +394,9 @@
     }
   );
 
+  if (itemMainCategory) itemMainCategory.addEventListener("change", () => updateSubcategoryOptions());
+  updateSubcategoryOptions("Bestsellers");
+
   if (itemImage) {
     itemImage.addEventListener("change", () => {
       const file = itemImage.files?.[0];
@@ -488,6 +517,8 @@
       const payload = {
         name: document.getElementById("itemName").value.trim(),
         category: document.getElementById("itemCategory").value.trim(),
+        main_category: itemMainCategory.value,
+        subcategory: document.getElementById("itemCategory").value.trim(),
         price: Number(document.getElementById("itemPrice").value),
         price_display: null,
         description: document.getElementById("itemDescription").value.trim() || null,
@@ -539,7 +570,8 @@
 
       document.getElementById("itemId").value = data.id;
       document.getElementById("itemName").value = data.name || "";
-      document.getElementById("itemCategory").value = data.category || "";
+      itemMainCategory.value = data.main_category || "Food";
+      updateSubcategoryOptions(data.subcategory || data.category || "Bestsellers");
       document.getElementById("itemPrice").value = data.price ?? "";
       document.getElementById("itemDescription").value = data.description || "";
       document.getElementById("itemVegetarian").checked = Boolean(data.is_vegetarian);
