@@ -5,12 +5,16 @@
   const filters = document.getElementById("categoryFilters");
   const searchInput = document.getElementById("menuSearch");
 
+  if (!grid || !status || !filters) return;
+
   let items = [];
   let activeMain = "Food";
   let activeSubcategory = "All";
   let searchTerm = "";
   let previousBodyOverflow = "";
   let previousBodyPaddingRight = "";
+  let previousScrollY = 0;
+  let modalHistoryActive = false;
 
   const config = window.APP_CONFIG || {};
   const configured = config.supabaseUrl && config.supabaseAnonKey &&
@@ -18,15 +22,20 @@
     !config.supabaseAnonKey.includes("PASTE_");
 
   const foodCategories = [
-    "Bestsellers", "Soups", "Veg Starters", "Non-Veg Starters",
-    "Veg Biryani", "Non-Veg Biryani", "Veg Curries",
-    "Non-Veg Curries", "Breads", "Rice & Noodles", "Desserts"
+    "Bestsellers", "Soups", "Starters (Veg)", "Starters (Non-Veg)",
+    "Veg Starters", "Non-Veg Starters", "Veg Biryani", "Non-Veg Biryani",
+    "Veg Curries", "Non-Veg Curries", "Breads", "Rice & Noodles",
+    "Desserts"
   ];
 
   const drinkCategories = [
-    "Bestsellers", "Fresh Juices", "Milkshakes",
-    "Mojitos", "Cool Drinks", "Hot Beverages", "Tea & Coffee"
+    "Bestsellers", "Fresh Juices", "Milkshakes", "Mojitos",
+    "Cool Drinks", "Hot Beverages", "Tea & Coffee"
   ];
+
+  function normalize(value) {
+    return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  }
 
   function showStatus(message, kind = "") {
     status.textContent = message;
@@ -49,42 +58,79 @@
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 2
-    }).format(Number(value));
+    }).format(Number(value) || 0);
   }
 
   function getMainCategory(item) {
-    return item.main_category || "Food";
+    return String(item.main_category || "Food").trim();
   }
 
   function getSubcategory(item) {
-    return item.subcategory || item.category || "Other";
+    return String(item.subcategory || item.category || "Other").trim();
   }
 
   function getImage(item) {
-    return item.image_url || "";
+    return String(item.image_url || "").trim();
+  }
+
+  function isSameCategory(first, second) {
+    return normalize(first) === normalize(second);
+  }
+
+  function getMainItems() {
+    return items.filter(item =>
+      isSameCategory(getMainCategory(item), activeMain)
+    );
+  }
+
+  function getAvailableSubcategories() {
+    const actual = getMainItems()
+      .map(getSubcategory)
+      .filter(Boolean);
+
+    const defaults = activeMain === "Food"
+      ? foodCategories
+      : drinkCategories;
+
+    const unique = new Map();
+
+    for (const category of [...defaults, ...actual]) {
+      const key = normalize(category);
+      if (key && !unique.has(key)) unique.set(key, category);
+    }
+
+    return ["All", ...unique.values()];
   }
 
   function renderFilters() {
-    const mainButtons = ["Food", "Drinks"].map(category =>
-      `<button type="button" class="filter-chip main-category-chip ${category === activeMain ? "active" : ""}" data-main="${category}" aria-pressed="${category === activeMain}">${category}</button>`
-    ).join("");
+    const mainButtons = ["Food", "Drinks"].map(category => `
+      <button
+        type="button"
+        class="filter-chip main-category-chip ${isSameCategory(category, activeMain) ? "active" : ""}"
+        data-main="${category}"
+        aria-pressed="${isSameCategory(category, activeMain)}"
+      >${category}</button>
+    `).join("");
 
-    const defaults = activeMain === "Food" ? foodCategories : drinkCategories;
-    const actual = items
-      .filter(item => getMainCategory(item) === activeMain)
-      .map(getSubcategory);
+    const subcategories = getAvailableSubcategories();
 
-    const subcategories = [
-      "All",
-      ...new Set([...defaults, ...actual])
-    ];
+    if (!subcategories.some(category =>
+      isSameCategory(category, activeSubcategory)
+    )) {
+      activeSubcategory = "All";
+    }
 
     filters.innerHTML = `
       <div class="main-category-filters">${mainButtons}</div>
       <div class="subcategory-filters">
-        ${subcategories.map(category =>
-          `<button type="button" class="filter-chip ${category === activeSubcategory ? "active" : ""}" data-subcategory="${escapeHTML(category)}" aria-pressed="${category === activeSubcategory}">${escapeHTML(category)}</button>`
-        ).join("")}
+        ${subcategories.map(category => `
+          <button
+            type="button"
+            class="filter-chip ${isSameCategory(category, activeSubcategory) ? "active" : ""}"
+            data-subcategory="${escapeHTML(category)}"
+            aria-pressed="${isSameCategory(category, activeSubcategory)}"
+          >${escapeHTML(category)}</button>
+        `).join("")}
       </div>
     `;
   }
@@ -93,19 +139,26 @@
     const visible = items.filter(item => {
       const main = getMainCategory(item);
       const sub = getSubcategory(item);
-      const searchable = `${item.name || ""} ${main} ${sub} ${item.description || ""}`.toLowerCase();
+      const searchable = [
+        item.name,
+        main,
+        sub,
+        item.category,
+        item.description
+      ].map(value => String(value ?? "")).join(" ").toLowerCase();
 
-      return main === activeMain &&
-        (activeSubcategory === "All" || sub === activeSubcategory) &&
+      return isSameCategory(main, activeMain) &&
+        (activeSubcategory === "All" ||
+          isSameCategory(sub, activeSubcategory)) &&
         searchable.includes(searchTerm);
     });
 
     if (!visible.length) {
-      grid.innerHTML = "";
+      grid.replaceChildren();
       showStatus(
-        items.length
+        getMainItems().length
           ? `No ${activeMain.toLowerCase()} items match this selection. Try another category or search.`
-          : "The digital menu is being prepared. Please ask restaurant staff for the current menu."
+          : `No items are currently assigned to ${activeMain}. Check the main_category values in Supabase.`
       );
       return;
     }
@@ -114,21 +167,9 @@
 
     grid.innerHTML = visible.map((item, index) => {
       const photoUrl = getImage(item);
-      const imageAttributes = photoUrl
-        ? `src="${escapeHTML(photoUrl)}"`
-        : "";
-
-      const image = `
-        <img
-          class="dish-image"
-          ${imageAttributes}
-          alt="${escapeHTML(item.name)}"
-          loading="${index < 3 ? "eager" : "lazy"}"
-          decoding="async"
-          ${index < 3 ? 'fetchpriority="high"' : ""}
-          onerror="this.onerror=null;this.classList.add('dish-image-failed');this.removeAttribute('src')"
-        >
-      `;
+      const image = photoUrl
+        ? `<img class="dish-image" src="${escapeHTML(photoUrl)}" alt="${escapeHTML(item.name)}" loading="${index < 2 ? "eager" : "lazy"}" decoding="async" ${index < 2 ? 'fetchpriority="high"' : ""}>`
+        : `<div class="dish-image dish-image-failed" role="img" aria-label="No image available for ${escapeHTML(item.name)}"></div>`;
 
       return `
         <article
@@ -156,11 +197,17 @@
         </article>
       `;
     }).join("");
+
+    grid.querySelectorAll(".dish-image[src]").forEach(image => {
+      image.addEventListener("error", () => {
+        image.classList.add("dish-image-failed");
+        image.removeAttribute("src");
+      }, { once: true });
+    });
   }
 
   function getOrCreateModal() {
     let modal = document.getElementById("dishDetailModal");
-
     if (modal) return modal;
 
     modal = document.createElement("div");
@@ -185,9 +232,7 @@
     document.body.appendChild(modal);
 
     modal.addEventListener("click", event => {
-      if (event.target.closest("[data-close-dish]")) {
-        closeDish(true);
-      }
+      if (event.target.closest("[data-close-dish]")) closeDish(true);
     });
 
     return modal;
@@ -195,17 +240,27 @@
 
   function openDish(item) {
     const modal = getOrCreateModal();
+    if (modal.classList.contains("open")) return;
+
+    previousScrollY = window.scrollY;
+    previousBodyOverflow = document.body.style.overflow;
+    previousBodyPaddingRight = document.body.style.paddingRight;
+
     const detailImage = document.getElementById("dishDetailImage");
     const photoUrl = getImage(item);
 
     detailImage.removeAttribute("src");
     detailImage.alt = item.name;
-    detailImage.loading = "eager";
-    detailImage.decoding = "async";
-    detailImage.classList.toggle("dish-image-failed", !photoUrl);
+    detailImage.classList.remove("dish-image-failed");
 
     if (photoUrl) {
       detailImage.src = photoUrl;
+      detailImage.onerror = () => {
+        detailImage.classList.add("dish-image-failed");
+        detailImage.removeAttribute("src");
+      };
+    } else {
+      detailImage.classList.add("dish-image-failed");
     }
 
     document.getElementById("dishDetailBadge").innerHTML =
@@ -221,11 +276,7 @@
     document.getElementById("dishDetailCategory").textContent =
       `${getMainCategory(item)} · ${getSubcategory(item)}`;
 
-    previousBodyOverflow = document.body.style.overflow;
-    previousBodyPaddingRight = document.body.style.paddingRight;
-
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
@@ -240,6 +291,9 @@
         "",
         "#dish-detail"
       );
+      modalHistoryActive = true;
+    } else {
+      modalHistoryActive = false;
     }
 
     modal.querySelector(".dish-detail-close").focus();
@@ -249,17 +303,21 @@
     document.body.style.overflow = previousBodyOverflow;
     document.body.style.paddingRight = previousBodyPaddingRight;
     document.body.classList.remove("modal-open");
+
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: previousScrollY, behavior: "instant" });
+    });
   }
 
   function closeDish(updateHistory = false) {
     const modal = document.getElementById("dishDetailModal");
-
-    if (!modal || !modal.classList.contains("open")) return;
+    if (!modal?.classList.contains("open")) return;
 
     modal.classList.remove("open");
     restorePageScroll();
 
-    if (updateHistory && history.state?.dishDetailOpen) {
+    if (updateHistory && modalHistoryActive && history.state?.dishDetailOpen) {
+      modalHistoryActive = false;
       history.back();
     }
   }
@@ -299,23 +357,17 @@
     if (!card) return;
 
     event.preventDefault();
-
     const item = items.find(entry => String(entry.id) === card.dataset.dishId);
     if (item) openDish(item);
   });
 
   window.addEventListener("popstate", () => {
     const modal = document.getElementById("dishDetailModal");
-
-    if (modal?.classList.contains("open")) {
-      closeDish(false);
-    }
+    if (modal?.classList.contains("open")) closeDish(false);
   });
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape") {
-      closeDish(true);
-    }
+    if (event.key === "Escape") closeDish(true);
   });
 
   if (searchInput) {
@@ -330,6 +382,11 @@
     return;
   }
 
+  if (!window.supabase?.createClient) {
+    showStatus("The menu service could not be initialized. Please refresh and try again.", "error");
+    return;
+  }
+
   const supabase = window.supabase.createClient(
     config.supabaseUrl,
     config.supabaseAnonKey
@@ -339,18 +396,18 @@
     try {
       const { data, error } = await supabase
         .from("menu_items")
-        .select("id,name,category,main_category,subcategory,description,price,price_display,image_url,is_vegetarian,is_must_try,created_at")
+        .select("id,name,category,main_category,subcategory,description,price,price_display,image_url,is_vegetarian,is_must_try,is_available,created_at")
         .order("main_category", { ascending: true })
         .order("subcategory", { ascending: true })
         .order("name", { ascending: true });
 
       if (error) throw error;
 
-      items = data || [];
+      items = (data || []).filter(item => item.is_available !== false);
       renderFilters();
       renderItems();
     } catch (error) {
-      console.error(error);
+      console.error("Menu load error:", error);
       showStatus("We couldn't load the menu right now. Please ask restaurant staff for assistance.", "error");
     }
   })();
