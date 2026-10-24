@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -13,7 +14,10 @@
     <div class="header-inner">
       <a class="brand" href="index.html">
         <span class="brand-mark" aria-hidden="true">A</span>
-        <span><strong>Adbhutaaharam</strong><small>Menu Administration</small></span>
+        <span>
+          <strong>Adbhutaaharam</strong>
+          <small>Menu Administration</small>
+        </span>
       </a>
       <a class="text-link" href="index.html">View customer menu ↗</a>
     </div>
@@ -26,13 +30,21 @@
       <p class="hero-copy">Sign in to add dishes and update menu details.</p>
     </section>
 
-    <div id="adminStatus" class="status-message" role="status">Checking configuration…</div>
+    <div id="adminStatus" class="status-message" role="status">
+      Checking configuration…
+    </div>
 
     <section id="loginPanel" class="panel narrow-panel" hidden>
       <h2>Admin sign in</h2>
       <form id="loginForm" class="stack-form">
-        <label>Email address<input id="email" type="email" required autocomplete="username" placeholder="Admin email"></label>
-        <label>Password<input id="password" type="password" required autocomplete="current-password" placeholder="Password"></label>
+        <label for="email">
+          Email address
+          <input id="email" type="email" required autocomplete="username" placeholder="Admin email">
+        </label>
+        <label for="password">
+          Password
+          <input id="password" type="password" required autocomplete="current-password" placeholder="Password">
+        </label>
         <button class="button primary-button" type="submit">Sign in</button>
       </form>
       <p class="muted small">Admin accounts must be created in your Supabase project. Public sign-up is intentionally not provided.</p>
@@ -40,7 +52,10 @@
 
     <section id="dashboard" hidden>
       <div class="dashboard-heading">
-        <div><h2>Menu items</h2><p class="muted">Changes are saved to the connected database.</p></div>
+        <div>
+          <h2>Menu items</h2>
+          <p class="muted">Changes are saved to the connected database.</p>
+        </div>
         <button id="signOutButton" class="button secondary-button" type="button">Sign out</button>
       </div>
 
@@ -48,12 +63,44 @@
         <h3 id="formHeading">Add a menu item</h3>
         <form id="itemForm" class="item-form">
           <input id="itemId" type="hidden">
-          <label>Dish name *<input id="itemName" required maxlength="100" placeholder="Enter the actual dish name"></label>
-          <label>Category *<input id="itemCategory" required maxlength="60" placeholder="For example, a category used by your restaurant"></label>
-          <label>Price (₹) *<input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter current price"></label>
-          <label>Description<textarea id="itemDescription" maxlength="500" rows="3" placeholder="Optional description"></textarea></label>
-          <label>Image URL (optional)<input id="itemImage" type="url" placeholder="https://…"></label>
-          <label class="checkbox-label"><input id="itemVegetarian" type="checkbox"> Vegetarian</label>
+
+          <label for="itemName">
+            Dish name *
+            <input id="itemName" required maxlength="100" placeholder="Enter the actual dish name">
+          </label>
+
+          <label for="itemCategory">
+            Category *
+            <input id="itemCategory" required maxlength="60" placeholder="Enter the dish category">
+          </label>
+
+          <label for="itemPrice">
+            Price (₹) *
+            <input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter current price">
+          </label>
+
+          <label for="itemDescription">
+            Description
+            <textarea id="itemDescription" maxlength="500" rows="3" placeholder="Optional description"></textarea>
+          </label>
+
+          <label for="itemImage">
+            Dish image (optional)
+            <input id="itemImage" type="file" accept="image/jpeg,image/png,image/webp">
+            <span class="muted small">Choose JPG, PNG, or WebP from your computer. Maximum size: 5 MB.</span>
+          </label>
+
+          <div id="itemImagePreviewWrap" class="image-upload-preview" hidden>
+            <img id="itemImagePreview" alt="Selected dish preview" style="width:180px;max-height:180px;object-fit:cover;border-radius:10px;">
+            <p id="itemImagePreviewLabel" class="muted small">Image preview</p>
+            <button id="removeItemImageButton" class="button secondary-button" type="button">Remove selected image</button>
+          </div>
+
+          <label class="checkbox-label" for="itemVegetarian">
+            <input id="itemVegetarian" type="checkbox">
+            Vegetarian
+          </label>
+
           <div class="form-actions">
             <button class="button primary-button" type="submit">Save item</button>
             <button id="cancelEditButton" class="button secondary-button" type="button" hidden>Cancel edit</button>
@@ -61,17 +108,28 @@
         </form>
       </section>
 
-      <section class="admin-menu-tools" aria-label="Search and filter menu items">
-        <label>Search menu items<input id="adminSearch" type="search" placeholder="Search by dish name..." autocomplete="off"></label>
-        <label>Filter by category<select id="adminCategoryFilter"><option value="All">All categories</option></select></label>
-        <p id="adminFilterCount" class="muted small"></p>
+      <section class="panel admin-list-tools">
+        <label for="adminSearch">
+          Search menu items
+          <input id="adminSearch" type="search" placeholder="Search by dish, category or description">
+        </label>
+
+        <label for="adminCategoryFilter">
+          Filter category
+          <select id="adminCategoryFilter">
+            <option value="All">All categories</option>
+          </select>
+        </label>
+
+        <p id="adminFilterCount" class="muted small" aria-live="polite"></p>
       </section>
+
       <div id="adminItems" class="admin-items"></div>
     </section>
 
     <section id="setupHelp" class="panel setup-panel" hidden>
       <h2>Finish setup first</h2>
-      <p>Connect this website to Supabase by following the setup guide included in the project ZIP. The menu will not save items until the project URL, public anon key, database table, and admin account are configured.</p>
+      <p>Connect this website to Supabase using your project URL and public anon key in config.js. Ensure the database table, Storage bucket, security policies, and admin account are configured before saving menu items.</p>
     </section>
   </main>
 
