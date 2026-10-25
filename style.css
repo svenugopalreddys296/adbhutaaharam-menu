@@ -413,73 +413,194 @@ body.modal-open { overflow:hidden; }
   }
 }
 
-#categoryFilters {
-  display: block;
-  width: 100%;
+/* Final responsive menu filter fixes */
+#menuSection,
+.menu-tools,
+.category-filters,
+#categoryFilters,
+.main-category-filters,
+.subcategory-filters {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#categoryFilters.category-filters {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 18px;
   overflow: visible;
+  padding: 4px 0 10px;
 }
 
 .main-category-filters {
   display: flex;
-  gap: 14px;
-  margin: 8px 0 18px;
-  padding: 4px 0 10px;
-  overflow-x: auto;
-  scrollbar-width: thin;
-  -webkit-overflow-scrolling: touch;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  overflow: visible;
+  margin: 10px 0 4px;
+  padding: 4px 0;
 }
 
-.main-category-filters .filter-chip {
+.main-category-filters .main-category-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  min-width: 110px;
+  min-width: 132px;
   min-height: 58px;
-  padding: 15px 30px;
-  font-size: 19px;
-  font-weight: 700;
-  border-radius: 18px;
+  padding: 14px 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: #5d4a45;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.main-category-filters .main-category-chip.active {
+  background: var(--wine);
+  border-color: var(--gold);
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(23, 61, 43, .14);
 }
 
 .subcategory-filters {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 5px 0 14px;
+  margin: 0;
+  padding: 5px 2px 16px;
   scrollbar-width: thin;
+  scrollbar-color: var(--gold) #eee8d7;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scroll-snap-type: x proximity;
 }
 
 .subcategory-filters .filter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
-  min-height: 48px;
-  padding: 12px 22px;
-  font-size: 15px;
+  min-height: 46px;
+  padding: 11px 20px;
   white-space: nowrap;
+  scroll-snap-align: start;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.subcategory-filters::-webkit-scrollbar {
+  height: 6px;
+}
+
+.subcategory-filters::-webkit-scrollbar-track {
+  background: #eee8d7;
   border-radius: 999px;
 }
 
-.main-category-filters .filter-chip.active,
-.subcategory-filters .filter-chip.active {
-  background: var(--wine);
-  color: white;
-  border-color: var(--gold);
+.subcategory-filters::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 999px;
+}
+
+.menu-grid {
+  min-width: 0;
+  width: 100%;
+}
+
+.menu-card-clickable {
+  min-width: 0;
+}
+
+.dish-image {
+  min-width: 0;
+  background: #eee9dc;
+}
+
+@media (min-width: 900px) {
+  .menu-tools {
+    padding: 24px 26px;
+  }
+
+  .main-category-filters .main-category-chip {
+    min-width: 150px;
+    min-height: 62px;
+    font-size: 19px;
+  }
+
+  .subcategory-filters .filter-chip {
+    min-height: 48px;
+    padding: 12px 22px;
+    font-size: 15px;
+  }
 }
 
 @media (max-width: 600px) {
-  .main-category-filters .filter-chip {
-    min-width: 100px;
-    min-height: 54px;
+  .container {
+    width: calc(100% - 28px);
+  }
+
+  .menu-tools {
+    width: 100%;
+    gap: 16px;
+    padding: 18px 16px;
+    overflow: visible;
+  }
+
+  .section-hint {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  .main-category-filters {
+    gap: 12px;
+    margin: 12px 0 2px;
+  }
+
+  .main-category-filters .main-category-chip {
+    min-width: 128px;
+    min-height: 58px;
     padding: 13px 24px;
     font-size: 18px;
   }
 
+  .subcategory-filters {
+    gap: 10px;
+    padding: 4px 1px 15px;
+  }
+
   .subcategory-filters .filter-chip {
-    min-height: 46px;
-    padding: 11px 18px;
-    font-size: 14px;
+    min-height: 48px;
+    padding: 12px 18px;
+    font-size: 15px;
   }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
