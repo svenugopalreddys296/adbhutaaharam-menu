@@ -22,19 +22,36 @@
     !config.supabaseAnonKey.includes("PASTE_");
 
   const foodCategories = [
-    "Bestsellers", "Soups", "Starters (Veg)", "Starters (Non-Veg)",
-    "Veg Starters", "Non-Veg Starters", "Veg Biryani", "Non-Veg Biryani",
-    "Veg Curries", "Non-Veg Curries", "Breads", "Rice & Noodles",
-    "Desserts"
+    "Bestsellers",
+    "Soups",
+    "Veg Starters",
+    "Non-Veg Starters",
+    "Veg Biryani",
+    "Non-Veg Biryani",
+    "Veg Curries",
+    "Non-Veg Curries",
+    "Breads",
+    "Rice & Noodles",
+    "Desserts",
+    "Accompaniments"
   ];
 
   const drinkCategories = [
-    "Bestsellers", "Fresh Juices", "Milkshakes", "Mojitos",
-    "Cool Drinks", "Hot Beverages", "Tea & Coffee"
+    "Bestsellers",
+    "Fresh Juices",
+    "Milkshakes",
+    "Mojitos",
+    "Cool Drinks",
+    "Hot Beverages",
+    "Tea & Coffee"
   ];
 
   function normalize(value) {
     return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  }
+
+  function isSameCategory(first, second) {
+    return normalize(first) === normalize(second);
   }
 
   function showStatus(message, kind = "") {
@@ -71,10 +88,6 @@
 
   function getImage(item) {
     return String(item.image_url || "").trim();
-  }
-
-  function isSameCategory(first, second) {
-    return normalize(first) === normalize(second);
   }
 
   function getMainItems() {
@@ -139,6 +152,7 @@
     const visible = items.filter(item => {
       const main = getMainCategory(item);
       const sub = getSubcategory(item);
+
       const searchable = [
         item.name,
         main,
@@ -147,14 +161,20 @@
         item.description
       ].map(value => String(value ?? "")).join(" ").toLowerCase();
 
+      const matchesCategory =
+        isSameCategory(activeSubcategory, "All") ||
+        (isSameCategory(activeSubcategory, "Bestsellers")
+          ? item.is_must_try === true || item.is_must_try === 1
+          : isSameCategory(sub, activeSubcategory));
+
       return isSameCategory(main, activeMain) &&
-        (activeSubcategory === "All" ||
-          isSameCategory(sub, activeSubcategory)) &&
+        matchesCategory &&
         searchable.includes(searchTerm);
     });
 
     if (!visible.length) {
       grid.replaceChildren();
+
       showStatus(
         getMainItems().length
           ? `No ${activeMain.toLowerCase()} items match this selection. Try another category or search.`
@@ -167,6 +187,7 @@
 
     grid.innerHTML = visible.map((item, index) => {
       const photoUrl = getImage(item);
+
       const image = photoUrl
         ? `<img class="dish-image" src="${escapeHTML(photoUrl)}" alt="${escapeHTML(item.name)}" loading="${index < 2 ? "eager" : "lazy"}" decoding="async" ${index < 2 ? 'fetchpriority="high"' : ""}>`
         : `<div class="dish-image dish-image-failed" role="img" aria-label="No image available for ${escapeHTML(item.name)}"></div>`;
@@ -188,7 +209,9 @@
             ${item.description ? `<p class="dish-description">${escapeHTML(item.description)}</p>` : ""}
             <div class="dish-meta">
               <span class="pill">${escapeHTML(getSubcategory(item))}</span>
-              ${item.is_must_try ? '<span class="pill must-try">Must Try</span>' : ""}
+              ${item.is_must_try === true || item.is_must_try === 1
+                ? '<span class="pill must-try">Bestseller</span>'
+                : ""}
               ${item.is_vegetarian
                 ? '<span class="pill veg">Vegetarian</span>'
                 : '<span class="pill non-veg">Non-vegetarian</span>'}
@@ -252,6 +275,7 @@
     detailImage.removeAttribute("src");
     detailImage.alt = item.name;
     detailImage.classList.remove("dish-image-failed");
+    detailImage.onerror = null;
 
     if (photoUrl) {
       detailImage.src = photoUrl;
@@ -277,6 +301,7 @@
       `${getMainCategory(item)} · ${getSubcategory(item)}`;
 
     const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     }
@@ -305,13 +330,14 @@
     document.body.classList.remove("modal-open");
 
     requestAnimationFrame(() => {
-      window.scrollTo({ top: previousScrollY, behavior: "instant" });
+      window.scrollTo(0, previousScrollY);
     });
   }
 
   function closeDish(updateHistory = false) {
     const modal = document.getElementById("dishDetailModal");
-    if (!modal?.classList.contains("open")) return;
+
+    if (!modal || !modal.classList.contains("open")) return;
 
     modal.classList.remove("open");
     restorePageScroll();
@@ -357,6 +383,7 @@
     if (!card) return;
 
     event.preventDefault();
+
     const item = items.find(entry => String(entry.id) === card.dataset.dishId);
     if (item) openDish(item);
   });
