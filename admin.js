@@ -1,4 +1,3 @@
-
 (() => {
   const config = window.APP_CONFIG || {};
 
