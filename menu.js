@@ -13,6 +13,9 @@
   let searchTerm = "";
   let previousBodyOverflow = "";
   let previousBodyPaddingRight = "";
+  let previousBodyPosition = "";
+  let previousBodyTop = "";
+  let previousBodyWidth = "";
   let previousScrollY = 0;
   let modalHistoryActive = false;
 
@@ -78,16 +81,49 @@
     }).format(Number(value) || 0);
   }
 
+  function canonicalCategory(value) {
+    const raw = String(value ?? "").trim().replace(/\s+/g, " ");
+    const key = normalize(raw).replace(/[&]/g, "and").replace(/[._-]+/g, " ");
+    const aliases = {
+      "accompainments": "Accompaniments",
+      "accompaniment": "Accompaniments",
+      "accompaniments": "Accompaniments",
+      "beverages": "Beverages",
+      "cool drinks": "Cool Drinks",
+      "soft drinks": "Cool Drinks",
+      "non veg starters": "Non-Veg Starters",
+      "non vegetarian starters": "Non-Veg Starters",
+      "veg starters": "Veg Starters",
+      "vegetarian starters": "Veg Starters",
+      "non veg biryani": "Non-Veg Biryani",
+      "veg biryani": "Veg Biryani",
+      "non veg curries": "Non-Veg Curries",
+      "gravies non veg": "Non-Veg Curries",
+      "gravies veg": "Veg Curries",
+      "rice noodles": "Rice & Noodles",
+      "tea coffee": "Tea & Coffee"
+    };
+    return aliases[key] || raw;
+  }
+
   function getMainCategory(item) {
-    return String(item.main_category || "Food").trim();
+    const stored = String(item.main_category || "Food").trim();
+    const sub = normalize(item.subcategory || item.category || "");
+    const drinkTerms = /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle)\b/;
+    if (isSameCategory(stored, "Drinks") || (!item.main_category && drinkTerms.test(sub)) || (isSameCategory(stored, "Food") && drinkTerms.test(sub))) return "Drinks";
+    return stored;
   }
 
   function getSubcategory(item) {
-    return String(item.subcategory || item.category || "Other").trim();
+    return canonicalCategory(item.subcategory || item.category || "Other");
   }
 
   function getImage(item) {
     return String(item.image_url || "").trim();
+  }
+
+  function isVegetarian(item) {
+    return item.is_vegetarian === true || item.is_vegetarian === 1;
   }
 
   function getMainItems() {
@@ -212,7 +248,7 @@
               ${item.is_must_try === true || item.is_must_try === 1
                 ? '<span class="pill must-try">Bestseller</span>'
                 : ""}
-              ${item.is_vegetarian
+              ${isVegetarian(item)
                 ? '<span class="pill veg">Vegetarian</span>'
                 : '<span class="pill non-veg">Non-vegetarian</span>'}
             </div>
@@ -268,6 +304,9 @@
     previousScrollY = window.scrollY;
     previousBodyOverflow = document.body.style.overflow;
     previousBodyPaddingRight = document.body.style.paddingRight;
+    previousBodyPosition = document.body.style.position;
+    previousBodyTop = document.body.style.top;
+    previousBodyWidth = document.body.style.width;
 
     const detailImage = document.getElementById("dishDetailImage");
     const photoUrl = getImage(item);
@@ -288,7 +327,7 @@
     }
 
     document.getElementById("dishDetailBadge").innerHTML =
-      item.is_vegetarian
+      isVegetarian(item)
         ? '<span class="dish-veg-mark" aria-label="Vegetarian">▣</span>'
         : '<span class="dish-nonveg-mark" aria-label="Non-vegetarian">▣</span>';
 
@@ -307,6 +346,9 @@
     }
 
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${previousScrollY}px`;
+    document.body.style.width = "100%";
     document.body.classList.add("modal-open");
     modal.classList.add("open");
 
@@ -327,11 +369,11 @@
   function restorePageScroll() {
     document.body.style.overflow = previousBodyOverflow;
     document.body.style.paddingRight = previousBodyPaddingRight;
+    document.body.style.position = previousBodyPosition;
+    document.body.style.top = previousBodyTop;
+    document.body.style.width = previousBodyWidth;
     document.body.classList.remove("modal-open");
-
-    requestAnimationFrame(() => {
-      window.scrollTo(0, previousScrollY);
-    });
+    window.scrollTo(0, previousScrollY);
   }
 
   function closeDish(updateHistory = false) {
