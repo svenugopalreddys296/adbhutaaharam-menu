@@ -1,4 +1,3 @@
-
 (() => {
   const grid = document.getElementById("menuGrid");
   const status = document.getElementById("menuStatus");
@@ -23,31 +22,6 @@
   const configured = config.supabaseUrl && config.supabaseAnonKey &&
     !config.supabaseUrl.includes("PASTE_") &&
     !config.supabaseAnonKey.includes("PASTE_");
-
-  const foodCategories = [
-    "Bestsellers",
-    "Soups",
-    "Veg Starters",
-    "Non-Veg Starters",
-    "Veg Biryani",
-    "Non-Veg Biryani",
-    "Veg Curries",
-    "Non-Veg Curries",
-    "Breads",
-    "Rice & Noodles",
-    "Desserts",
-    "Accompaniments"
-  ];
-
-  const drinkCategories = [
-    "Bestsellers",
-    "Fresh Juices",
-    "Milkshakes",
-    "Mojitos",
-    "Cool Drinks",
-    "Hot Beverages",
-    "Tea & Coffee"
-  ];
 
   function normalize(value) {
     return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -82,36 +56,18 @@
   }
 
   function canonicalCategory(value) {
-    const raw = String(value ?? "").trim().replace(/\s+/g, " ");
-    const key = normalize(raw).replace(/[&]/g, "and").replace(/[._-]+/g, " ");
-    const aliases = {
-      "accompainments": "Accompaniments",
-      "accompaniment": "Accompaniments",
-      "accompaniments": "Accompaniments",
-      "beverages": "Beverages",
-      "cool drinks": "Cool Drinks",
-      "soft drinks": "Cool Drinks",
-      "non veg starters": "Non-Veg Starters",
-      "non vegetarian starters": "Non-Veg Starters",
-      "veg starters": "Veg Starters",
-      "vegetarian starters": "Veg Starters",
-      "non veg biryani": "Non-Veg Biryani",
-      "veg biryani": "Veg Biryani",
-      "non veg curries": "Non-Veg Curries",
-      "gravies non veg": "Non-Veg Curries",
-      "gravies veg": "Veg Curries",
-      "rice noodles": "Rice & Noodles",
-      "tea coffee": "Tea & Coffee"
-    };
-    return aliases[key] || raw;
+    return String(value ?? "").trim().replace(/\s+/g, " ") || "Other";
   }
 
   function getMainCategory(item) {
-    const stored = String(item.main_category || "Food").trim();
+    const stored = String(item.main_category ?? "").trim();
+    if (isSameCategory(stored, "Food") || isSameCategory(stored, "Drinks")) {
+      return isSameCategory(stored, "Drinks") ? "Drinks" : "Food";
+    }
+
     const sub = normalize(item.subcategory || item.category || "");
-    const drinkTerms = /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle)\b/;
-    if (isSameCategory(stored, "Drinks") || (!item.main_category && drinkTerms.test(sub)) || (isSameCategory(stored, "Food") && drinkTerms.test(sub))) return "Drinks";
-    return stored;
+    const drinkTerms = /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle|mocktails?)\b/;
+    return drinkTerms.test(sub) ? "Drinks" : "Food";
   }
 
   function getSubcategory(item) {
@@ -136,19 +92,14 @@
     const actual = getMainItems()
       .map(getSubcategory)
       .filter(Boolean);
-
-    const defaults = activeMain === "Food"
-      ? foodCategories
-      : drinkCategories;
-
     const unique = new Map();
 
-    for (const category of [...defaults, ...actual]) {
+    for (const category of actual) {
       const key = normalize(category);
       if (key && !unique.has(key)) unique.set(key, category);
     }
 
-    return ["All", ...unique.values()];
+    return ["All", ...[...unique.values()].sort((a, b) => a.localeCompare(b))];
   }
 
   function renderFilters() {
