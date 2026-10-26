@@ -87,6 +87,12 @@
             <input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter current price">
           </label>
 
+          <label for="itemPriceDisplay">
+            Price display (optional)
+            <input id="itemPriceDisplay" maxlength="80" placeholder="e.g. ₹219/259; leave blank for standard price">
+            <span class="muted small">Use this only when the menu has a special or dual price display.</span>
+          </label>
+
           <label for="itemDescription">
             Description
             <textarea id="itemDescription" maxlength="500" rows="3" placeholder="Optional description"></textarea>
@@ -101,8 +107,18 @@
           <div id="itemImagePreviewWrap" class="image-upload-preview" hidden>
             <img id="itemImagePreview" alt="Selected dish preview" style="width:180px;max-height:180px;object-fit:cover;border-radius:10px;">
             <p id="itemImagePreviewLabel" class="muted small">Image preview</p>
-            <button id="removeItemImageButton" class="button secondary-button" type="button">Remove selected image</button>
+            <button id="removeItemImageButton" class="button secondary-button" type="button">Clear selected file</button>
           </div>
+
+          <label class="checkbox-label" for="itemMustTry">
+            <input id="itemMustTry" type="checkbox">
+            Mark as bestseller
+          </label>
+
+          <label class="checkbox-label" for="itemRemoveSavedImage">
+            <input id="itemRemoveSavedImage" type="checkbox">
+            Remove currently saved image when saving
+          </label>
 
           <label class="checkbox-label" for="itemVegetarian">
             <input id="itemVegetarian" type="checkbox">
