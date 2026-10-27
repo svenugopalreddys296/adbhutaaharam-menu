@@ -60,6 +60,7 @@
 
       <section class="panel">
         <h3 id="formHeading">Add a menu item</h3>
+
         <form id="itemForm" class="item-form">
           <input id="itemId" type="hidden">
 
@@ -104,19 +105,34 @@
           </label>
 
           <div id="itemImagePreviewWrap" class="image-upload-preview" hidden>
-            <img id="itemImagePreview" alt="Selected dish preview" style="width:180px;max-height:180px;object-fit:cover;border-radius:10px;">
+            <img
+              id="itemImagePreview"
+              alt="Dish image preview"
+              style="width:180px;max-height:180px;object-fit:cover;border-radius:10px;"
+            >
             <p id="itemImagePreviewLabel" class="muted small">Image preview</p>
-            <button id="removeItemImageButton" class="button secondary-button" type="button">Clear selected file</button>
+
+            <button
+              id="removeItemImageButton"
+              class="button secondary-button"
+              type="button"
+            >
+              Clear selected file
+            </button>
           </div>
+
+          <button
+            id="removeSavedImageButton"
+            class="button secondary-button"
+            type="button"
+            hidden
+          >
+            Remove saved image
+          </button>
 
           <label class="checkbox-label" for="itemMustTry">
             <input id="itemMustTry" type="checkbox">
             Mark as bestseller
-          </label>
-
-          <label class="checkbox-label" for="itemRemoveSavedImage">
-            <input id="itemRemoveSavedImage" type="checkbox">
-            Remove currently saved image when saving
           </label>
 
           <label class="checkbox-label" for="itemVegetarian">
