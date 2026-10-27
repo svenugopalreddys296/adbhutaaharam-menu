@@ -17,11 +17,13 @@
   let previousBodyWidth = "";
   let previousScrollY = 0;
   let modalHistoryActive = false;
+  const cardCache = new Map();
 
   const config = window.APP_CONFIG || {};
   const configured = config.supabaseUrl && config.supabaseAnonKey &&
     !config.supabaseUrl.includes("PASTE_") &&
     !config.supabaseAnonKey.includes("PASTE_");
+
 
   function normalize(value) {
     return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -56,18 +58,15 @@
   }
 
   function canonicalCategory(value) {
-    return String(value ?? "").trim().replace(/\s+/g, " ") || "Other";
+    return String(value ?? "").trim().replace(/\s+/g, " ");
   }
 
   function getMainCategory(item) {
-    const stored = String(item.main_category ?? "").trim();
-    if (isSameCategory(stored, "Food") || isSameCategory(stored, "Drinks")) {
-      return isSameCategory(stored, "Drinks") ? "Drinks" : "Food";
-    }
-
+    const stored = String(item.main_category || "Food").trim();
     const sub = normalize(item.subcategory || item.category || "");
-    const drinkTerms = /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle|mocktails?)\b/;
-    return drinkTerms.test(sub) ? "Drinks" : "Food";
+    const drinkTerms = /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle)\b/;
+    if (isSameCategory(stored, "Drinks") || (!item.main_category && drinkTerms.test(sub)) || (isSameCategory(stored, "Food") && drinkTerms.test(sub))) return "Drinks";
+    return stored;
   }
 
   function getSubcategory(item) {
@@ -91,15 +90,9 @@
   function getAvailableSubcategories() {
     const actual = getMainItems()
       .map(getSubcategory)
-      .filter(Boolean);
-    const unique = new Map();
-
-    for (const category of actual) {
-      const key = normalize(category);
-      if (key && !unique.has(key)) unique.set(key, category);
-    }
-
-    return ["All", ...[...unique.values()].sort((a, b) => a.localeCompare(b))];
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b));
+    return ["All", ...new Set(actual)];
   }
 
   function renderFilters() {
@@ -135,85 +128,126 @@
     `;
   }
 
+  function createDishCard(item, index) {
+    const card = document.createElement("article");
+    card.className = "menu-card menu-card-clickable";
+    card.setAttribute("role", "button");
+    card.tabIndex = 0;
+    card.dataset.dishId = String(item.id);
+    card.setAttribute("aria-label", `View ${item.name} details`);
+
+    const photoUrl = getImage(item);
+    let image;
+    if (photoUrl) {
+      image = document.createElement("img");
+      image.className = "dish-image";
+      image.src = photoUrl;
+      image.alt = item.name;
+      image.loading = index < 4 ? "eager" : "lazy";
+      image.decoding = "async";
+      if (index < 4) image.fetchPriority = "high";
+      image.addEventListener("error", () => {
+        image.classList.add("dish-image-failed");
+        image.removeAttribute("src");
+      }, { once: true });
+    } else {
+      image = document.createElement("div");
+      image.className = "dish-image dish-image-failed";
+      image.setAttribute("role", "img");
+      image.setAttribute("aria-label", `No image available for ${item.name}`);
+    }
+
+    const body = document.createElement("div");
+    body.className = "dish-body";
+    const topline = document.createElement("div");
+    topline.className = "dish-topline";
+    const name = document.createElement("h2");
+    name.className = "dish-name";
+    name.textContent = item.name;
+    const price = document.createElement("span");
+    price.className = "dish-price";
+    price.textContent = item.price_display || money(item.price);
+    topline.append(name, price);
+    body.appendChild(topline);
+
+    if (item.description) {
+      const description = document.createElement("p");
+      description.className = "dish-description";
+      description.textContent = item.description;
+      body.appendChild(description);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "dish-meta";
+    const category = document.createElement("span");
+    category.className = "pill";
+    category.textContent = getSubcategory(item);
+    meta.appendChild(category);
+
+    if (item.is_must_try === true || item.is_must_try === 1) {
+      const bestseller = document.createElement("span");
+      bestseller.className = "pill must-try";
+      bestseller.textContent = "Bestseller";
+      meta.appendChild(bestseller);
+    }
+
+    const veg = document.createElement("span");
+    veg.className = `pill ${isVegetarian(item) ? "veg" : "non-veg"}`;
+    veg.textContent = isVegetarian(item) ? "Vegetarian" : "Non-vegetarian";
+    meta.appendChild(veg);
+    body.appendChild(meta);
+    card.append(image, body);
+    return card;
+  }
+
   function renderItems() {
-    const visible = items.filter(item => {
+    const visibleIds = new Set();
+    let visibleCount = 0;
+
+    items.forEach((item, index) => {
       const main = getMainCategory(item);
       const sub = getSubcategory(item);
-
-      const searchable = [
-        item.name,
-        main,
-        sub,
-        item.category,
-        item.description
-      ].map(value => String(value ?? "")).join(" ").toLowerCase();
-
-      const matchesCategory =
-        isSameCategory(activeSubcategory, "All") ||
+      const searchable = [item.name, main, sub, item.category, item.description]
+        .map(value => String(value ?? "")).join(" ").toLowerCase();
+      const matchesCategory = isSameCategory(activeSubcategory, "All") ||
         (isSameCategory(activeSubcategory, "Bestsellers")
           ? item.is_must_try === true || item.is_must_try === 1
           : isSameCategory(sub, activeSubcategory));
+      const matches = isSameCategory(main, activeMain) && matchesCategory && searchable.includes(searchTerm);
+      const id = String(item.id);
+      let card = cardCache.get(id);
 
-      return isSameCategory(main, activeMain) &&
-        matchesCategory &&
-        searchable.includes(searchTerm);
+      if (!card) {
+        card = createDishCard(item, index);
+        cardCache.set(id, card);
+      }
+
+      card.hidden = !matches;
+      if (matches) {
+        visibleIds.add(id);
+        visibleCount++;
+        if (card.parentElement !== grid) grid.appendChild(card);
+      }
     });
 
-    if (!visible.length) {
-      grid.replaceChildren();
+    for (const [id, card] of cardCache) {
+      if (!items.some(item => String(item.id) === id)) {
+        card.remove();
+        cardCache.delete(id);
+      } else if (!visibleIds.has(id)) {
+        card.hidden = true;
+      }
+    }
 
+    if (!visibleCount) {
       showStatus(
         getMainItems().length
           ? `No ${activeMain.toLowerCase()} items match this selection. Try another category or search.`
           : `No items are currently assigned to ${activeMain}. Check the main_category values in Supabase.`
       );
-      return;
+    } else {
+      status.hidden = true;
     }
-
-    status.hidden = true;
-
-    grid.innerHTML = visible.map((item, index) => {
-      const photoUrl = getImage(item);
-
-      const image = photoUrl
-        ? `<img class="dish-image" src="${escapeHTML(photoUrl)}" alt="${escapeHTML(item.name)}" loading="${index < 2 ? "eager" : "lazy"}" decoding="async" ${index < 2 ? 'fetchpriority="high"' : ""}>`
-        : `<div class="dish-image dish-image-failed" role="img" aria-label="No image available for ${escapeHTML(item.name)}"></div>`;
-
-      return `
-        <article
-          class="menu-card menu-card-clickable"
-          role="button"
-          tabindex="0"
-          data-dish-id="${escapeHTML(item.id)}"
-          aria-label="View ${escapeHTML(item.name)} details"
-        >
-          ${image}
-          <div class="dish-body">
-            <div class="dish-topline">
-              <h2 class="dish-name">${escapeHTML(item.name)}</h2>
-              <span class="dish-price">${escapeHTML(item.price_display || money(item.price))}</span>
-            </div>
-            ${item.description ? `<p class="dish-description">${escapeHTML(item.description)}</p>` : ""}
-            <div class="dish-meta">
-              <span class="pill">${escapeHTML(getSubcategory(item))}</span>
-              ${item.is_must_try === true || item.is_must_try === 1
-                ? '<span class="pill must-try">Bestseller</span>'
-                : ""}
-              ${isVegetarian(item)
-                ? '<span class="pill veg">Vegetarian</span>'
-                : '<span class="pill non-veg">Non-vegetarian</span>'}
-            </div>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    grid.querySelectorAll(".dish-image[src]").forEach(image => {
-      image.addEventListener("error", () => {
-        image.classList.add("dish-image-failed");
-        image.removeAttribute("src");
-      }, { once: true });
-    });
   }
 
   function getOrCreateModal() {
@@ -286,7 +320,7 @@
     document.getElementById("dishDetailPrice").textContent =
       item.price_display || money(item.price);
     document.getElementById("dishDetailDescription").textContent =
-      item.description || "A delicious selection from Adbhutaaharam.";
+      item.description || "";
     document.getElementById("dishDetailCategory").textContent =
       `${getMainCategory(item)} · ${getSubcategory(item)}`;
 
@@ -307,7 +341,7 @@
       history.pushState(
         { ...(history.state || {}), dishDetailOpen: true },
         "",
-        "#dish-detail"
+        window.location.pathname + window.location.search + "#dish-detail"
       );
       modalHistoryActive = true;
     } else {
@@ -332,13 +366,14 @@
 
     if (!modal || !modal.classList.contains("open")) return;
 
-    modal.classList.remove("open");
-    restorePageScroll();
-
     if (updateHistory && modalHistoryActive && history.state?.dishDetailOpen) {
       modalHistoryActive = false;
       history.back();
+      return;
     }
+
+    modal.classList.remove("open");
+    restorePageScroll();
   }
 
   filters.addEventListener("click", event => {
@@ -383,7 +418,10 @@
 
   window.addEventListener("popstate", () => {
     const modal = document.getElementById("dishDetailModal");
-    if (modal?.classList.contains("open")) closeDish(false);
+    if (modal?.classList.contains("open")) {
+      modalHistoryActive = false;
+      closeDish(false);
+    }
   });
 
   document.addEventListener("keydown", event => {
