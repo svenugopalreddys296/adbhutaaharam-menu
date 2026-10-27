@@ -46,7 +46,9 @@
         </label>
         <button class="button primary-button" type="submit">Sign in</button>
       </form>
-      <p class="muted small">Admin accounts must be created in your Supabase project. Public sign-up is intentionally not provided.</p>
+      <p class="muted small">
+        Admin accounts must be created in Supabase. Public sign-up is disabled.
+      </p>
     </section>
 
     <section id="dashboard" hidden>
@@ -55,7 +57,9 @@
           <h2>Menu items</h2>
           <p class="muted">Changes are saved to the connected database.</p>
         </div>
-        <button id="signOutButton" class="button secondary-button" type="button">Sign out</button>
+        <button id="signOutButton" class="button secondary-button" type="button">
+          Sign out
+        </button>
       </div>
 
       <section class="panel">
@@ -84,13 +88,15 @@
 
           <label for="itemPrice">
             Price (₹) *
-            <input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter current price">
+            <input id="itemPrice" required type="number" min="0" step="0.01" inputmode="decimal" placeholder="Enter price">
           </label>
 
           <label for="itemPriceDisplay">
             Price display (optional)
-            <input id="itemPriceDisplay" maxlength="80" placeholder="e.g. ₹219/259; leave blank for standard price">
-            <span class="muted small">Use this only when the menu has a special or dual price display.</span>
+            <input id="itemPriceDisplay" maxlength="80" placeholder="e.g. ₹219 / ₹259">
+            <span class="muted small">
+              Use this for special or dual-price displays.
+            </span>
           </label>
 
           <label for="itemDescription">
@@ -101,7 +107,9 @@
           <label for="itemImage">
             Dish image (optional)
             <input id="itemImage" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="muted small">Choose JPG, PNG, or WebP from your computer. Maximum size: 5 MB.</span>
+            <span class="muted small">
+              Choose JPG, PNG, or WebP. Maximum size: 5 MB.
+            </span>
           </label>
 
           <div id="itemImagePreviewWrap" class="image-upload-preview" hidden>
@@ -110,8 +118,7 @@
               alt="Dish image preview"
               style="width:180px;max-height:180px;object-fit:cover;border-radius:10px;"
             >
-            <p id="itemImagePreviewLabel" class="muted small">Image preview</p>
-
+            <p id="itemImagePreviewLabel" class="muted small"></p>
             <button
               id="removeItemImageButton"
               class="button secondary-button"
@@ -142,7 +149,14 @@
 
           <div class="form-actions">
             <button class="button primary-button" type="submit">Save item</button>
-            <button id="cancelEditButton" class="button secondary-button" type="button" hidden>Cancel edit</button>
+            <button
+              id="cancelEditButton"
+              class="button secondary-button"
+              type="button"
+              hidden
+            >
+              Cancel edit
+            </button>
           </div>
         </form>
       </section>
@@ -150,7 +164,7 @@
       <section class="panel admin-list-tools">
         <label for="adminSearch">
           Search menu items
-          <input id="adminSearch" type="search" placeholder="Search by dish, category or description">
+          <input id="adminSearch" type="search" placeholder="Search dishes or categories">
         </label>
 
         <label for="adminCategoryFilter">
@@ -168,7 +182,10 @@
 
     <section id="setupHelp" class="panel setup-panel" hidden>
       <h2>Finish setup first</h2>
-      <p>Connect this website to Supabase using your project URL and public anon key in config.js. Ensure the database table, Storage bucket, security policies, and admin account are configured before saving menu items.</p>
+      <p>
+        Configure your Supabase URL and public anon key in config.js.
+        Check the database table, Storage bucket, security policies, and admin account.
+      </p>
     </section>
   </main>
 
