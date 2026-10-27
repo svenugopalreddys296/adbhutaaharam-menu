@@ -614,3 +614,42 @@ body.modal-open { overflow:hidden; }
   color: #173d2b;
   object-fit: contain;
 }
+
+/* Definitive fix: keep Remove saved image compact */
+.item-form > #removeSavedImageButton {
+  display: inline-flex !important;
+  position: static !important;
+  grid-column: 1 / -1 !important;
+  justify-self: start !important;
+  align-self: start !important;
+  flex: none !important;
+
+  width: max-content !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+
+  padding: 0 18px !important;
+  margin: 8px 0 !important;
+  box-sizing: border-box !important;
+
+  border: 1px solid #e1d2c3 !important;
+  border-radius: 10px !important;
+  background: #f1e8de !important;
+  color: #173d2b !important;
+
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+
+.item-form > #removeSavedImageButton[hidden] {
+  display: none !important;
+}
+
