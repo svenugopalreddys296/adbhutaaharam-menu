@@ -1,4 +1,6 @@
 (() => {
+  "use strict";
+
   const config = window.APP_CONFIG || {};
 
   const status = document.getElementById("adminStatus");
@@ -11,31 +13,63 @@
   const formHeading = document.getElementById("formHeading");
   const cancelEdit = document.getElementById("cancelEditButton");
   const signOutButton = document.getElementById("signOutButton");
-  const itemImage = document.getElementById("itemImage");
-  const itemImagePreview = document.getElementById("itemImagePreview");
-  const itemImagePreviewWrap = document.getElementById("itemImagePreviewWrap");
-  const itemImagePreviewLabel = document.getElementById("itemImagePreviewLabel");
-  const removeItemImageButton = document.getElementById("removeItemImageButton");
+
+  const itemId = document.getElementById("itemId");
+  const itemName = document.getElementById("itemName");
   const itemMainCategory = document.getElementById("itemMainCategory");
   const itemCategory = document.getElementById("itemCategory");
+  const itemPrice = document.getElementById("itemPrice");
   const itemPriceDisplay = document.getElementById("itemPriceDisplay");
+  const itemDescription = document.getElementById("itemDescription");
+  const itemImage = document.getElementById("itemImage");
+  const itemVegetarian = document.getElementById("itemVegetarian");
   const itemMustTry = document.getElementById("itemMustTry");
-  const itemRemoveSavedImage = document.getElementById("itemRemoveSavedImage");
+
+  const imagePreview = document.getElementById("itemImagePreview");
+  const imagePreviewWrap = document.getElementById("itemImagePreviewWrap");
+  const imagePreviewLabel = document.getElementById("itemImagePreviewLabel");
+  const clearSelectedImageButton = document.getElementById("removeItemImageButton");
+  const removeSavedImageButton = document.getElementById("removeSavedImageButton");
+
   const adminSearch = document.getElementById("adminSearch");
   const adminCategoryFilter = document.getElementById("adminCategoryFilter");
   const adminFilterCount = document.getElementById("adminFilterCount");
 
-  let supabase;
+  let supabase = null;
   let isAdmin = false;
+  let menuItems = [];
   let currentImageUrl = null;
   let removeSavedImage = false;
   let previewObjectUrl = null;
-  let menuItems = [];
   let authCheckInProgress = false;
 
   const bucketName = "menu-images";
-  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
   const maxFileSize = 5 * 1024 * 1024;
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  const foodSubcategories = [
+    "Soups",
+    "Starters (Veg)",
+    "Starters (Non-Veg)",
+    "Roti",
+    "Gravies (Veg)",
+    "Gravies (Non-Veg)",
+    "Signature Dishes",
+    "Biryanis",
+    "Pulaos (Veg)",
+    "Pulaos (Non-Veg)",
+    "Accompainments",
+    "Desserts",
+    "Ice Creams",
+    "Coffee, Biscuits & Snacks (4 pm to 8 pm)"
+  ];
+
+  const drinkSubcategories = [
+    "Beverages",
+    "Milkshake",
+    "Regular Mocktails",
+    "Long Mocktails"
+  ];
 
   const configured =
     typeof config.supabaseUrl === "string" &&
@@ -65,12 +99,30 @@
     })[character]);
   }
 
+  function normalize(value) {
+    return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+  }
+
   function money(value) {
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
       maximumFractionDigits: 2
     }).format(Number(value || 0));
+  }
+
+  function mainCategoryOf(item) {
+    const stored = String(item.main_category || "Food").trim();
+
+    if (stored.toLowerCase() === "drinks") {
+      return "Drinks";
+    }
+
+    return "Food";
+  }
+
+  function subcategoryOf(item) {
+    return String(item.subcategory || item.category || "").trim();
   }
 
   function releasePreviewObjectUrl() {
@@ -80,108 +132,86 @@
     }
   }
 
-  function showImagePreview(url, label = "Image preview") {
-    if (!itemImagePreview) return;
-
+  function showImagePreview(url, label = "Image preview", isTemporary = false) {
     releasePreviewObjectUrl();
 
-    if (url) {
-      itemImagePreview.src = url;
-      itemImagePreview.hidden = false;
-
-      if (itemImagePreviewWrap) {
-        itemImagePreviewWrap.hidden = false;
-      }
-
-      if (itemImagePreviewLabel) {
-        itemImagePreviewLabel.textContent = label;
-      }
-    } else {
-      itemImagePreview.removeAttribute("src");
-      itemImagePreview.hidden = true;
-
-      if (itemImagePreviewWrap) {
-        itemImagePreviewWrap.hidden = true;
-      }
+    if (!url) {
+      imagePreview.removeAttribute("src");
+      imagePreview.hidden = true;
+      imagePreviewWrap.hidden = true;
+      imagePreviewLabel.textContent = "";
+      return;
     }
-  }
 
-  function clearSelectedImage() {
-    if (itemImage) itemImage.value = "";
-    showImagePreview(currentImageUrl, currentImageUrl ? "Current saved image" : "No image selected");
-  }
+    if (isTemporary) {
+      previewObjectUrl = url;
+    }
 
-  const foodSubcategories = ["Soups", "Veg Starters", "Non-Veg Starters", "Veg Biryani", "Non-Veg Biryani", "Veg Curries", "Non-Veg Curries", "Gravies (Veg)", "Gravies (Non-Veg)", "Breads", "Rice & Noodles", "Accompaniments", "Desserts", "Biscuits & Snacks (4 pm to 8 pm)", "Other"];
-  const drinkSubcategories = ["Beverages", "Fresh Juices", "Milkshakes", "Mojitos", "Cool Drinks", "Hot Beverages", "Tea & Coffee", "Coffee", "Other"];
-
-  function normalize(value) {
-    return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
-  }
-
-  function canonicalCategory(value) {
-    const raw = String(value ?? "").trim().replace(/\s+/g, " ");
-    const key = normalize(raw).replace(/[&]/g, "and").replace(/[._-]+/g, " ");
-    const aliases = {
-      "accompainments": "Accompaniments", "accompaniment": "Accompaniments",
-      "accompaniments": "Accompaniments", "soft drinks": "Cool Drinks",
-      "non veg starters": "Non-Veg Starters", "non veg biryani": "Non-Veg Biryani",
-      "non veg curries": "Non-Veg Curries", "gravies non veg": "Gravies (Non-Veg)",
-      "gravies veg": "Gravies (Veg)", "rice noodles": "Rice & Noodles",
-      "tea coffee": "Tea & Coffee"
-    };
-    return aliases[key] || raw;
-  }
-
-  function mainCategoryOf(item) {
-    const stored = String(item.main_category || "Food").trim();
-    const sub = normalize(item.subcategory || item.category || "");
-    if (stored.toLowerCase() === "drinks" || /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle)\b/.test(sub)) return "Drinks";
-    return stored;
-  }
-
-  function subcategoryOf(item) {
-    return canonicalCategory(item.subcategory || item.category || "Other");
+    imagePreview.src = url;
+    imagePreview.alt = "Dish image preview";
+    imagePreview.hidden = false;
+    imagePreviewWrap.hidden = false;
+    imagePreviewLabel.textContent = label;
   }
 
   function updateSubcategoryOptions(selected = "") {
-    if (!itemCategory || !itemMainCategory) return;
-    const options = itemMainCategory.value === "Drinks" ? drinkSubcategories : foodSubcategories;
+    const options = itemMainCategory.value === "Drinks"
+      ? drinkSubcategories
+      : foodSubcategories;
+
+    const existing = selected.trim();
+    const categories = [...options];
+
+    if (existing && !categories.includes(existing)) {
+      categories.push(existing);
+    }
+
     itemCategory.replaceChildren();
-    options.forEach(category => {
+
+    categories.forEach(category => {
       const option = document.createElement("option");
       option.value = category;
       option.textContent = category;
       itemCategory.appendChild(option);
     });
-    if (selected && !options.includes(selected)) {
-      const option = document.createElement("option");
-      option.value = selected;
-      option.textContent = selected;
-      itemCategory.appendChild(option);
+
+    itemCategory.value = existing || categories[0] || "";
+  }
+
+  function resetImageSelection() {
+    itemImage.value = "";
+    removeSavedImage = false;
+
+    if (removeSavedImageButton) {
+      removeSavedImageButton.hidden = true;
+      removeSavedImageButton.textContent = "Remove saved image";
     }
-    itemCategory.value = selected || options[0];
+
+    showImagePreview(null);
   }
 
   function resetForm() {
     itemForm.reset();
-    document.getElementById("itemId").value = "";
-    if (itemMainCategory) itemMainCategory.value = "Food";
-    updateSubcategoryOptions("Other");
+    itemId.value = "";
     currentImageUrl = null;
-    removeSavedImage = false;
-    if (itemRemoveSavedImage) itemRemoveSavedImage.checked = false;
-    if (itemPriceDisplay) itemPriceDisplay.value = "";
-    if (itemMustTry) itemMustTry.checked = false;
-    showImagePreview(null);
+    resetImageSelection();
+
+    itemMainCategory.value = "Food";
+    updateSubcategoryOptions("Soups");
+
+    itemPriceDisplay.value = "";
+    itemMustTry.checked = false;
+    itemVegetarian.checked = false;
+
     formHeading.textContent = "Add a menu item";
     cancelEdit.hidden = true;
+    clearStatus();
   }
 
   function renderCategoryOptions() {
-    if (!adminCategoryFilter) return;
-
     const selected = adminCategoryFilter.value || "All";
-    const categories = [...new Set(menuItems.map(subcategoryOf).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const categories = [...new Set(menuItems.map(subcategoryOf).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b));
 
     adminCategoryFilter.replaceChildren();
 
@@ -201,21 +231,34 @@
   }
 
   function renderAdminItems() {
-    const query = (adminSearch?.value || "").trim().toLowerCase();
-    const category = adminCategoryFilter?.value || "All";
+    const query = normalize(adminSearch.value);
+    const selectedCategory = adminCategoryFilter.value || "All";
 
     const filtered = menuItems.filter(item => {
-      const searchableText = [item.name, mainCategoryOf(item), subcategoryOf(item), item.category, item.description, item.price_display, item.price].join(" ").toLowerCase();
-      return searchableText.includes(query) && (category === "All" || normalize(subcategoryOf(item)) === normalize(category));
+      const searchableText = [
+        item.name,
+        mainCategoryOf(item),
+        subcategoryOf(item),
+        item.category,
+        item.description,
+        item.price_display,
+        item.price
+      ].join(" ").toLowerCase();
+
+      const matchesSearch = searchableText.includes(query);
+      const matchesCategory =
+        selectedCategory === "All" ||
+        normalize(subcategoryOf(item)) === normalize(selectedCategory);
+
+      return matchesSearch && matchesCategory;
     });
 
-    if (adminFilterCount) {
-      adminFilterCount.textContent =
-        `Showing ${filtered.length} of ${menuItems.length} menu items`;
-    }
+    adminFilterCount.textContent =
+      `Showing ${filtered.length} of ${menuItems.length} menu items`;
 
     if (!filtered.length) {
-      itemsList.innerHTML = '<div class="status-message">No matching menu items found.</div>';
+      itemsList.innerHTML =
+        '<div class="status-message">No matching menu items found.</div>';
       return;
     }
 
@@ -230,15 +273,39 @@
               style="width:100px;height:70px;object-fit:cover;border-radius:8px;"
             >
           ` : ""}
-          <h3>${escapeHTML(item.name)} <span class="muted">· ${escapeHTML(item.price_display || money(item.price))}</span></h3>
-          <p>${escapeHTML(mainCategoryOf(item))} · ${escapeHTML(subcategoryOf(item))}${item.is_vegetarian ? " · Vegetarian" : " · Non-vegetarian"}${item.is_must_try ? " · Bestseller" : ""}</p>
+
+          <h3>
+            ${escapeHTML(item.name)}
+            <span class="muted">· ${escapeHTML(item.price_display || money(item.price))}</span>
+          </h3>
+
+          <p>
+            ${escapeHTML(mainCategoryOf(item))} ·
+            ${escapeHTML(subcategoryOf(item))}
+            ${item.is_vegetarian ? " · Vegetarian" : " · Non-vegetarian"}
+            ${item.is_must_try ? " · Bestseller" : ""}
+          </p>
+
           ${item.description ? `<p>${escapeHTML(item.description)}</p>` : ""}
-          <p class="muted small">${item.is_available === false ? "Unavailable to customers" : "Available to customers"}</p>
+
+          <p class="muted small">
+            ${item.is_available === false
+              ? "Unavailable to customers"
+              : "Available to customers"}
+          </p>
         </div>
+
         <div class="admin-item-actions">
-          <button class="button secondary-button" type="button" data-action="edit" data-id="${escapeHTML(item.id)}">Edit</button>
-          <button class="button secondary-button" type="button" data-action="toggle" data-id="${escapeHTML(item.id)}">${item.is_available === false ? "Make available" : "Mark unavailable"}</button>
-          <button class="button secondary-button" type="button" data-action="delete" data-id="${escapeHTML(item.id)}">Delete</button>
+          <button class="button secondary-button" type="button"
+            data-action="edit" data-id="${escapeHTML(item.id)}">Edit</button>
+
+          <button class="button secondary-button" type="button"
+            data-action="toggle" data-id="${escapeHTML(item.id)}">
+            ${item.is_available === false ? "Make available" : "Mark unavailable"}
+          </button>
+
+          <button class="button secondary-button" type="button"
+            data-action="delete" data-id="${escapeHTML(item.id)}">Delete</button>
         </div>
       </article>
     `).join("");
@@ -281,19 +348,14 @@
 
   async function refreshAuth() {
     if (authCheckInProgress) return;
+
     authCheckInProgress = true;
 
     try {
       const { data: sessionData, error: sessionError } =
         await supabase.auth.getSession();
 
-      if (sessionError) {
-        console.error("Session check error:", sessionError);
-        loginPanel.hidden = true;
-        dashboard.hidden = true;
-        showStatus(`Could not check your session: ${sessionError.message}`, "error");
-        return;
-      }
+      if (sessionError) throw sessionError;
 
       const session = sessionData?.session;
 
@@ -310,8 +372,6 @@
         await supabase.auth.getUser();
 
       if (userError || !userData?.user) {
-        console.error("User verification error:", userError);
-
         await supabase.auth.signOut();
         isAdmin = false;
         dashboard.hidden = true;
@@ -320,15 +380,7 @@
         return;
       }
 
-      try {
-        isAdmin = await checkAdmin(userData.user);
-      } catch (error) {
-        console.error("Admin authorization error:", error);
-        loginPanel.hidden = true;
-        dashboard.hidden = true;
-        showStatus(`Could not verify admin permissions: ${error.message}`, "error");
-        return;
-      }
+      isAdmin = await checkAdmin(userData.user);
 
       if (!isAdmin) {
         await supabase.auth.signOut();
@@ -343,7 +395,7 @@
       await loadItems();
     } catch (error) {
       console.error("Authentication error:", error);
-      showStatus(`Authentication failed: ${error.message}`, "error");
+      showStatus(`Could not verify admin access: ${error.message}`, "error");
     } finally {
       authCheckInProgress = false;
     }
@@ -360,7 +412,8 @@
       throw new Error("Image size must not exceed 5 MB.");
     }
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: userData, error: userError } =
+      await supabase.auth.getUser();
 
     if (userError || !userData?.user) {
       throw new Error("Your session has expired. Please sign in again.");
@@ -372,7 +425,11 @@
       "image/webp": "webp"
     }[file.type];
 
-    const filePath = `${userData.user.id}/${crypto.randomUUID()}.${extension}`;
+    const uniqueId = crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    const filePath = `${userData.user.id}/${uniqueId}.${extension}`;
 
     const { error: uploadError } = await supabase.storage
       .from(bucketName)
@@ -399,14 +456,14 @@
 
   if (!configured) {
     showStatus("Supabase configuration is missing or invalid. Check config.js.", "error");
-    if (setupHelp) setupHelp.hidden = false;
+    setupHelp.hidden = false;
     loginPanel.hidden = true;
     dashboard.hidden = true;
     return;
   }
 
   if (!window.supabase?.createClient) {
-    showStatus("Supabase library did not load. Check your internet connection and refresh.", "error");
+    showStatus("Supabase library did not load. Check your connection and refresh.", "error");
     return;
   }
 
@@ -422,75 +479,88 @@
     }
   );
 
-  if (itemMainCategory) itemMainCategory.addEventListener("change", () => updateSubcategoryOptions());
-  updateSubcategoryOptions("Bestsellers");
+  itemMainCategory.addEventListener("change", () => {
+    updateSubcategoryOptions();
+  });
 
-  if (itemImage) {
-    itemImage.addEventListener("change", () => {
-      const file = itemImage.files?.[0];
+  updateSubcategoryOptions("Soups");
 
-      if (!file) {
-        showImagePreview(currentImageUrl);
-        return;
-      }
+  itemImage.addEventListener("change", () => {
+    const file = itemImage.files?.[0];
 
-      if (!allowedTypes.includes(file.type)) {
-        itemImage.value = "";
-        showImagePreview(currentImageUrl);
-        showStatus("Choose a JPG, PNG, or WebP image.", "error");
-        return;
-      }
+    if (!file) {
+      showImagePreview(
+        currentImageUrl,
+        currentImageUrl ? "Current saved image" : "No image selected"
+      );
+      return;
+    }
 
-      if (file.size > maxFileSize) {
-        itemImage.value = "";
-        showImagePreview(currentImageUrl);
-        showStatus("Image size must not exceed 5 MB.", "error");
-        return;
-      }
+    if (!allowedTypes.includes(file.type)) {
+      itemImage.value = "";
+      showImagePreview(currentImageUrl);
+      showStatus("Choose a JPG, PNG, or WebP image.", "error");
+      return;
+    }
 
-      releasePreviewObjectUrl();
-      previewObjectUrl = URL.createObjectURL(file);
+    if (file.size > maxFileSize) {
+      itemImage.value = "";
+      showImagePreview(currentImageUrl);
+      showStatus("Image size must not exceed 5 MB.", "error");
+      return;
+    }
 
-      if (itemImagePreview) {
-        itemImagePreview.src = previewObjectUrl;
-        itemImagePreview.hidden = false;
-      }
+    releasePreviewObjectUrl();
+    previewObjectUrl = URL.createObjectURL(file);
 
-      if (itemImagePreviewWrap) itemImagePreviewWrap.hidden = false;
-      if (itemImagePreviewLabel) itemImagePreviewLabel.textContent = file.name;
+    imagePreview.src = previewObjectUrl;
+    imagePreview.alt = "Selected dish image preview";
+    imagePreview.hidden = false;
+    imagePreviewWrap.hidden = false;
+    imagePreviewLabel.textContent = `Selected: ${file.name}`;
 
+    removeSavedImage = false;
+    removeSavedImageButton.hidden = !currentImageUrl;
+    removeSavedImageButton.textContent = "Remove saved image";
+
+    clearStatus();
+  });
+
+  clearSelectedImageButton.addEventListener("click", () => {
+    itemImage.value = "";
+    showImagePreview(
+      currentImageUrl,
+      currentImageUrl ? "Current saved image" : "No image selected"
+    );
+
+    showStatus(
+      currentImageUrl
+        ? "Selected file cleared. The saved image is unchanged."
+        : "Selected file cleared.",
+      "success"
+    );
+  });
+
+  removeSavedImageButton.addEventListener("click", () => {
+    removeSavedImage = !removeSavedImage;
+
+    if (removeSavedImage) {
+      itemImage.value = "";
+      showImagePreview(null);
+      removeSavedImageButton.textContent = "Undo image removal";
+      showStatus("The saved image will be removed when you save this dish.", "success");
+    } else {
+      showImagePreview(
+        currentImageUrl,
+        currentImageUrl ? "Current saved image" : "No image selected"
+      );
+      removeSavedImageButton.textContent = "Remove saved image";
       clearStatus();
-    });
-  }
+    }
+  });
 
-  if (removeItemImageButton) {
-    removeItemImageButton.addEventListener("click", () => {
-      clearSelectedImage();
-      showStatus(currentImageUrl ? "Selected file cleared. The saved image will be kept." : "Image selection cleared.", "success");
-    });
-  }
-
-  if (itemRemoveSavedImage) {
-    itemRemoveSavedImage.addEventListener("change", () => {
-      removeSavedImage = itemRemoveSavedImage.checked;
-      if (removeSavedImage) {
-        if (itemImage) itemImage.value = "";
-        showImagePreview(null);
-        showStatus("The saved image will be removed when you save this dish.", "success");
-      } else {
-        showImagePreview(currentImageUrl, currentImageUrl ? "Current saved image" : "No image selected");
-        clearStatus();
-      }
-    });
-  }
-
-  if (adminSearch) {
-    adminSearch.addEventListener("input", renderAdminItems);
-  }
-
-  if (adminCategoryFilter) {
-    adminCategoryFilter.addEventListener("change", renderAdminItems);
-  }
+  adminSearch.addEventListener("input", renderAdminItems);
+  adminCategoryFilter.addEventListener("change", renderAdminItems);
 
   loginForm.addEventListener("submit", async event => {
     event.preventDefault();
@@ -537,10 +607,10 @@
       return;
     }
 
-    const button = itemForm.querySelector('button[type="submit"]');
-    button.disabled = true;
+    const submitButton = itemForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
 
-    const id = document.getElementById("itemId").value;
+    const editingId = itemId.value;
 
     try {
       const selectedFile = itemImage.files?.[0] || null;
@@ -550,42 +620,53 @@
         showStatus("Uploading image…");
         imageUrl = await uploadImage(selectedFile);
         removeSavedImage = false;
-        if (itemRemoveSavedImage) itemRemoveSavedImage.checked = false;
+      } else if (removeSavedImage) {
+        imageUrl = null;
       }
 
-      const displayPrice = itemPriceDisplay?.value.trim() || null;
-      if (!Number.isFinite(Number(document.getElementById("itemPrice").value)) || Number(document.getElementById("itemPrice").value) <= 0) throw new Error("Enter a price greater than zero.");
+      const rawPrice = itemPrice.value;
+      const numericPrice = Number(rawPrice);
+
+      if (rawPrice.trim() === "" || !Number.isFinite(numericPrice) || numericPrice < 0) {
+        throw new Error("Enter a valid price.");
+      }
+
+      const selectedSubcategory = itemCategory.value.trim();
 
       const payload = {
-        name: document.getElementById("itemName").value.trim(),
-        category: canonicalCategory(itemCategory.value.trim()),
+        name: itemName.value.trim(),
+        category: selectedSubcategory,
         main_category: itemMainCategory.value,
-        subcategory: canonicalCategory(itemCategory.value.trim()),
-        price: Number(document.getElementById("itemPrice").value),
-        price_display: displayPrice,
-        description: document.getElementById("itemDescription").value.trim() || null,
-        image_url: removeSavedImage ? null : imageUrl,
-        is_vegetarian: document.getElementById("itemVegetarian").checked,
-        is_must_try: Boolean(itemMustTry?.checked),
+        subcategory: selectedSubcategory,
+        price: numericPrice,
+        price_display: itemPriceDisplay.value.trim() || null,
+        description: itemDescription.value.trim() || null,
+        image_url: imageUrl,
+        is_vegetarian: itemVegetarian.checked,
+        is_must_try: itemMustTry.checked,
         updated_at: new Date().toISOString()
       };
 
+      if (!payload.name) {
+        throw new Error("Enter a dish name.");
+      }
+
       showStatus("Saving menu item…");
 
-      const result = id
-        ? await supabase.from("menu_items").update(payload).eq("id", id)
+      const result = editingId
+        ? await supabase.from("menu_items").update(payload).eq("id", editingId)
         : await supabase.from("menu_items").insert(payload);
 
       if (result.error) throw result.error;
 
       resetForm();
       await loadItems();
-      showStatus(id ? "Menu item updated." : "Menu item added.", "success");
+      showStatus(editingId ? "Menu item updated." : "Menu item added.", "success");
     } catch (error) {
       console.error("Save error:", error);
       showStatus(error.message || "Could not save this item.", "error");
     } finally {
-      button.disabled = false;
+      submitButton.disabled = false;
     }
   });
 
@@ -611,28 +692,39 @@
         return;
       }
 
-      document.getElementById("itemId").value = data.id;
-      document.getElementById("itemName").value = data.name || "";
-      itemMainCategory.value = mainCategoryOf(data);
-      updateSubcategoryOptions(data.subcategory || data.category || "Bestsellers");
-      document.getElementById("itemPrice").value = data.price ?? "";
-      if (itemPriceDisplay) itemPriceDisplay.value = data.price_display || "";
-      if (itemMustTry) itemMustTry.checked = data.is_must_try === true || data.is_must_try === 1;
-      removeSavedImage = false;
-      if (itemRemoveSavedImage) itemRemoveSavedImage.checked = false;
-      document.getElementById("itemDescription").value = data.description || "";
-      document.getElementById("itemVegetarian").checked = Boolean(data.is_vegetarian);
+      itemId.value = data.id;
+      itemName.value = data.name || "";
+
+      itemMainCategory.value =
+        String(data.main_category || "Food").toLowerCase() === "drinks"
+          ? "Drinks"
+          : "Food";
+
+      updateSubcategoryOptions(data.subcategory || data.category || "Soups");
+
+      itemPrice.value = data.price ?? "";
+      itemPriceDisplay.value = data.price_display || "";
+      itemDescription.value = data.description || "";
+      itemVegetarian.checked = Boolean(data.is_vegetarian);
+      itemMustTry.checked = Boolean(data.is_must_try);
 
       currentImageUrl = data.image_url || null;
+      removeSavedImage = false;
+      itemImage.value = "";
 
-      if (itemImage) itemImage.value = "";
-      if (itemRemoveSavedImage) itemRemoveSavedImage.checked = false;
+      showImagePreview(
+        currentImageUrl,
+        currentImageUrl ? "Current saved image" : "No image selected"
+      );
 
-      showImagePreview(currentImageUrl, currentImageUrl ? "Current saved image" : "No image selected");
+      removeSavedImageButton.hidden = !currentImageUrl;
+      removeSavedImageButton.textContent = "Remove saved image";
 
       formHeading.textContent = "Edit menu item";
       cancelEdit.hidden = false;
+
       itemForm.scrollIntoView({ behavior: "smooth", block: "start" });
+      clearStatus();
       return;
     }
 
@@ -658,7 +750,7 @@
     }
 
     if (action === "toggle") {
-      const item = menuItems.find(menuItem => String(menuItem.id) === String(id));
+      const item = menuItems.find(entry => String(entry.id) === String(id));
       if (!item) return;
 
       try {
@@ -687,6 +779,7 @@
       menuItems = [];
       dashboard.hidden = true;
       loginPanel.hidden = false;
+      resetForm();
       return;
     }
 
