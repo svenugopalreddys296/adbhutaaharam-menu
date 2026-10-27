@@ -604,3 +604,13 @@ body.modal-open { overflow:hidden; }
     scroll-behavior: auto !important;
   }
 }
+
+
+/* Keep filtered cards hidden even where responsive card styles set display:grid. */
+[hidden] { display: none !important; }
+
+.dish-image-failed {
+  background: linear-gradient(135deg, #e8efdf, #d4e0cb);
+  color: #173d2b;
+  object-fit: contain;
+}
