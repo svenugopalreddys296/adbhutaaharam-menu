@@ -49,26 +49,26 @@
 
   const foodSubcategories = [
     "Soups",
-    "Starters (Veg)",
-    "Starters (Non-Veg)",
+    "Non-Veg Starters",
+    "Veg Starters",
     "Roti",
-    "Gravies (Veg)",
-    "Gravies (Non-Veg)",
-    "Signature Dishes",
     "Biryanis",
-    "Pulaos (Veg)",
-    "Pulaos (Non-Veg)",
-    "Accompainments",
+    "Non-Veg Pulaos",
+    "Veg Pulaos",
+    "Non-Veg Gravies",
+    "Veg Gravies",
+    "Signature Dishes",
+    "Accompaniments",
     "Desserts",
-    "Ice Creams",
-    "Coffee, Biscuits & Snacks (4 pm to 8 pm)"
+    "Ice Creams"
   ];
 
   const drinkSubcategories = [
     "Beverages",
-    "Milkshake",
     "Regular Mocktails",
-    "Long Mocktails"
+    "Long Mocktails",
+    "Milkshakes",
+    "Coffee & Tea"
   ];
 
   const configured =
