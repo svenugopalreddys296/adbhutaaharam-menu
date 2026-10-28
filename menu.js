@@ -87,12 +87,44 @@
     );
   }
 
+  const foodSubcategories = [
+    "Soups", "Non-Veg Starters", "Veg Starters", "Roti", "Biryanis",
+    "Non-Veg Pulaos", "Veg Pulaos", "Non-Veg Gravies", "Veg Gravies",
+    "Signature Dishes", "Accompaniments", "Desserts", "Ice Creams"
+  ];
+
+  const drinkSubcategories = [
+    "Beverages", "Regular Mocktails", "Long Mocktails", "Milkshakes", "Coffee & Tea"
+  ];
+
+  function displaySubcategory(value) {
+    const normalized = normalize(value);
+    const aliases = {
+      "starters (non-veg)": "Non-Veg Starters",
+      "starters non veg": "Non-Veg Starters",
+      "starters (veg)": "Veg Starters",
+      "starters veg": "Veg Starters",
+      "gravies (non-veg)": "Non-Veg Gravies",
+      "gravies n veg": "Non-Veg Gravies",
+      "gravies (veg)": "Veg Gravies",
+      "gravies veg": "Veg Gravies",
+      "pulaos (non-veg)": "Non-Veg Pulaos",
+      "pulaos non veg": "Non-Veg Pulaos",
+      "pulaos (veg)": "Veg Pulaos",
+      "pulaos veg": "Veg Pulaos",
+      "accompainments": "Accompaniments",
+      "milkshake": "Milkshakes",
+      "coffee, tea": "Coffee & Tea"
+    };
+    return aliases[normalized] || value;
+  }
+
   function getAvailableSubcategories() {
+    const standard = activeMain === "Drinks" ? drinkSubcategories : foodSubcategories;
     const actual = getMainItems()
-      .map(getSubcategory)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b));
-    return ["All", ...new Set(actual)];
+      .map(item => displaySubcategory(getSubcategory(item)))
+      .filter(Boolean);
+    return ["All", ...new Set([...standard, ...actual])];
   }
 
   function renderFilters() {
@@ -206,7 +238,7 @@
 
     items.forEach((item, index) => {
       const main = getMainCategory(item);
-      const sub = getSubcategory(item);
+      const sub = displaySubcategory(getSubcategory(item));
       const searchable = [item.name, main, sub, item.category, item.description]
         .map(value => String(value ?? "")).join(" ").toLowerCase();
       const matchesCategory = isSameCategory(activeSubcategory, "All") ||
