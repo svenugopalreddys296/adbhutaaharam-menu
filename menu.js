@@ -487,19 +487,25 @@
 
     modal.querySelector(".dish-detail-close").focus();
   }
-
   function restorePageScroll() {
+    const scrollY = previousScrollY;
+
+    document.body.classList.remove("modal-open");
+
     document.body.style.overflow = previousBodyOverflow;
     document.body.style.paddingRight = previousBodyPaddingRight;
     document.body.style.position = previousBodyPosition;
     document.body.style.top = previousBodyTop;
     document.body.style.width = previousBodyWidth;
 
-    document.body.classList.remove("modal-open");
-
-    window.scrollTo(0, previousScrollY);
-  }
-
+    requestAnimationFrame(() => {
+        window.scrollTo({
+            top: scrollY,
+            left: 0,
+            behavior: "instant"
+        });
+    });
+}
   function closeDish() {
     const modal = document.getElementById("dishDetailModal");
 
