@@ -17,13 +17,13 @@
   let previousBodyWidth = "";
   let previousScrollY = 0;
   let modalHistoryActive = false;
+
   const cardCache = new Map();
 
   const config = window.APP_CONFIG || {};
   const configured = config.supabaseUrl && config.supabaseAnonKey &&
     !config.supabaseUrl.includes("PASTE_") &&
     !config.supabaseAnonKey.includes("PASTE_");
-
 
   function normalize(value) {
     return String(value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
@@ -64,8 +64,18 @@
   function getMainCategory(item) {
     const stored = String(item.main_category || "Food").trim();
     const sub = normalize(item.subcategory || item.category || "");
-    const drinkTerms = /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle)\b/;
-    if (isSameCategory(stored, "Drinks") || (!item.main_category && drinkTerms.test(sub)) || (isSameCategory(stored, "Food") && drinkTerms.test(sub))) return "Drinks";
+
+    const drinkTerms =
+      /\b(beverages?|juices?|milkshakes?|mojitos?|cool drinks|soft drinks|lassi|soda|tea|coffee|water bottle)\b/;
+
+    if (
+      isSameCategory(stored, "Drinks") ||
+      (!item.main_category && drinkTerms.test(sub)) ||
+      (isSameCategory(stored, "Food") && drinkTerms.test(sub))
+    ) {
+      return "Drinks";
+    }
+
     return stored;
   }
 
@@ -88,17 +98,32 @@
   }
 
   const foodSubcategories = [
-    "Soups", "Non-Veg Starters", "Veg Starters", "Roti", "Biryanis",
-    "Non-Veg Pulaos", "Veg Pulaos", "Non-Veg Gravies", "Veg Gravies",
-    "Signature Dishes", "Accompaniments", "Desserts", "Ice Creams"
+    "Soups",
+    "Non-Veg Starters",
+    "Veg Starters",
+    "Roti",
+    "Biryanis",
+    "Non-Veg Pulaos",
+    "Veg Pulaos",
+    "Non-Veg Gravies",
+    "Veg Gravies",
+    "Signature Dishes",
+    "Accompaniments",
+    "Desserts",
+    "Ice Creams"
   ];
 
   const drinkSubcategories = [
-    "Beverages", "Regular Mocktails", "Long Mocktails", "Milkshakes", "Coffee & Tea"
+    "Beverages",
+    "Regular Mocktails",
+    "Long Mocktails",
+    "Milkshakes",
+    "Coffee & Tea"
   ];
 
   function displaySubcategory(value) {
     const normalized = normalize(value);
+
     const aliases = {
       "starters (non-veg)": "Non-Veg Starters",
       "starters non veg": "Non-Veg Starters",
@@ -116,14 +141,20 @@
       "milkshake": "Milkshakes",
       "coffee, tea": "Coffee & Tea"
     };
+
     return aliases[normalized] || value;
   }
 
   function getAvailableSubcategories() {
-    const standard = activeMain === "Drinks" ? drinkSubcategories : foodSubcategories;
+    const standard =
+      activeMain === "Drinks"
+        ? drinkSubcategories
+        : foodSubcategories;
+
     const actual = getMainItems()
       .map(item => displaySubcategory(getSubcategory(item)))
       .filter(Boolean);
+
     return ["All", ...new Set([...standard, ...actual])];
   }
 
@@ -162,6 +193,7 @@
 
   function createDishCard(item, index) {
     const card = document.createElement("article");
+
     card.className = "menu-card menu-card-clickable";
     card.setAttribute("role", "button");
     card.tabIndex = 0;
@@ -170,6 +202,7 @@
 
     const photoUrl = getImage(item);
     let image;
+
     if (photoUrl) {
       image = document.createElement("img");
       image.className = "dish-image";
@@ -177,7 +210,11 @@
       image.alt = item.name;
       image.loading = index < 4 ? "eager" : "lazy";
       image.decoding = "async";
-      if (index < 4) image.fetchPriority = "high";
+
+      if (index < 4) {
+        image.fetchPriority = "high";
+      }
+
       image.addEventListener("error", () => {
         image.classList.add("dish-image-failed");
         image.removeAttribute("src");
@@ -186,19 +223,26 @@
       image = document.createElement("div");
       image.className = "dish-image dish-image-failed";
       image.setAttribute("role", "img");
-      image.setAttribute("aria-label", `No image available for ${item.name}`);
+      image.setAttribute(
+        "aria-label",
+        `No image available for ${item.name}`
+      );
     }
 
     const body = document.createElement("div");
     body.className = "dish-body";
+
     const topline = document.createElement("div");
     topline.className = "dish-topline";
+
     const name = document.createElement("h2");
     name.className = "dish-name";
     name.textContent = item.name;
+
     const price = document.createElement("span");
     price.className = "dish-price";
     price.textContent = item.price_display || money(item.price);
+
     topline.append(name, price);
     body.appendChild(topline);
 
@@ -211,6 +255,7 @@
 
     const meta = document.createElement("div");
     meta.className = "dish-meta";
+
     const category = document.createElement("span");
     category.className = "pill";
     category.textContent = getSubcategory(item);
@@ -225,10 +270,15 @@
 
     const veg = document.createElement("span");
     veg.className = `pill ${isVegetarian(item) ? "veg" : "non-veg"}`;
-    veg.textContent = isVegetarian(item) ? "Vegetarian" : "Non-vegetarian";
+    veg.textContent = isVegetarian(item)
+      ? "Vegetarian"
+      : "Non-vegetarian";
+
     meta.appendChild(veg);
     body.appendChild(meta);
+
     card.append(image, body);
+
     return card;
   }
 
@@ -239,13 +289,31 @@
     items.forEach((item, index) => {
       const main = getMainCategory(item);
       const sub = displaySubcategory(getSubcategory(item));
-      const searchable = [item.name, main, sub, item.category, item.description]
-        .map(value => String(value ?? "")).join(" ").toLowerCase();
-      const matchesCategory = isSameCategory(activeSubcategory, "All") ||
-        (isSameCategory(activeSubcategory, "Bestsellers")
-          ? item.is_must_try === true || item.is_must_try === 1
-          : isSameCategory(sub, activeSubcategory));
-      const matches = isSameCategory(main, activeMain) && matchesCategory && searchable.includes(searchTerm);
+
+      const searchable = [
+        item.name,
+        main,
+        sub,
+        item.category,
+        item.description
+      ]
+        .map(value => String(value ?? ""))
+        .join(" ")
+        .toLowerCase();
+
+      const matchesCategory =
+        isSameCategory(activeSubcategory, "All") ||
+        (
+          isSameCategory(activeSubcategory, "Bestsellers")
+            ? item.is_must_try === true || item.is_must_try === 1
+            : isSameCategory(sub, activeSubcategory)
+        );
+
+      const matches =
+        isSameCategory(main, activeMain) &&
+        matchesCategory &&
+        searchable.includes(searchTerm);
+
       const id = String(item.id);
       let card = cardCache.get(id);
 
@@ -255,10 +323,14 @@
       }
 
       card.hidden = !matches;
+
       if (matches) {
         visibleIds.add(id);
         visibleCount++;
-        if (card.parentElement !== grid) grid.appendChild(card);
+
+        if (card.parentElement !== grid) {
+          grid.appendChild(card);
+        }
       }
     });
 
@@ -284,6 +356,7 @@
 
   function getOrCreateModal() {
     let modal = document.getElementById("dishDetailModal");
+
     if (modal) return modal;
 
     modal = document.createElement("div");
@@ -292,9 +365,26 @@
 
     modal.innerHTML = `
       <div class="dish-detail-backdrop" data-close-dish></div>
-      <section class="dish-detail-panel" role="dialog" aria-modal="true" aria-labelledby="dishDetailName">
-        <button class="dish-detail-close" type="button" data-close-dish aria-label="Close dish details">×</button>
-        <img id="dishDetailImage" class="dish-detail-image" alt="" decoding="async">
+      <section
+        class="dish-detail-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dishDetailName"
+      >
+        <button
+          class="dish-detail-close"
+          type="button"
+          data-close-dish
+          aria-label="Close dish details"
+        >×</button>
+
+        <img
+          id="dishDetailImage"
+          class="dish-detail-image"
+          alt=""
+          decoding="async"
+        >
+
         <div class="dish-detail-content">
           <div id="dishDetailBadge"></div>
           <h2 id="dishDetailName"></h2>
@@ -308,7 +398,9 @@
     document.body.appendChild(modal);
 
     modal.addEventListener("click", event => {
-      if (event.target.closest("[data-close-dish]")) closeDish(true);
+      if (event.target.closest("[data-close-dish]")) {
+        closeDish();
+      }
     });
 
     return modal;
@@ -316,6 +408,7 @@
 
   function openDish(item) {
     const modal = getOrCreateModal();
+
     if (modal.classList.contains("open")) return;
 
     previousScrollY = window.scrollY;
@@ -335,6 +428,7 @@
 
     if (photoUrl) {
       detailImage.src = photoUrl;
+
       detailImage.onerror = () => {
         detailImage.classList.add("dish-image-failed");
         detailImage.removeAttribute("src");
@@ -349,14 +443,18 @@
         : '<span class="dish-nonveg-mark" aria-label="Non-vegetarian">▣</span>';
 
     document.getElementById("dishDetailName").textContent = item.name;
+
     document.getElementById("dishDetailPrice").textContent =
       item.price_display || money(item.price);
+
     document.getElementById("dishDetailDescription").textContent =
       item.description || "";
+
     document.getElementById("dishDetailCategory").textContent =
       `${getMainCategory(item)} · ${getSubcategory(item)}`;
 
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const scrollbarWidth =
+      window.innerWidth - document.documentElement.clientWidth;
 
     if (scrollbarWidth > 0) {
       document.body.style.paddingRight = `${scrollbarWidth}px`;
@@ -367,14 +465,21 @@
     document.body.style.top = `-${previousScrollY}px`;
     document.body.style.width = "100%";
     document.body.classList.add("modal-open");
+
     modal.classList.add("open");
 
     if (!history.state?.dishDetailOpen) {
       history.pushState(
-        { ...(history.state || {}), dishDetailOpen: true },
+        {
+          ...(history.state || {}),
+          dishDetailOpen: true
+        },
         "",
-        window.location.pathname + window.location.search + "#dish-detail"
+        window.location.pathname +
+          window.location.search +
+          "#dish-detail"
       );
+
       modalHistoryActive = true;
     } else {
       modalHistoryActive = false;
@@ -389,22 +494,33 @@
     document.body.style.position = previousBodyPosition;
     document.body.style.top = previousBodyTop;
     document.body.style.width = previousBodyWidth;
+
     document.body.classList.remove("modal-open");
+
     window.scrollTo(0, previousScrollY);
   }
 
-  function closeDish(updateHistory = false) {
+  function closeDish() {
     const modal = document.getElementById("dishDetailModal");
 
     if (!modal || !modal.classList.contains("open")) return;
 
-    if (updateHistory && modalHistoryActive && history.state?.dishDetailOpen) {
-      modalHistoryActive = false;
-      history.back();
-      return;
+    modal.classList.remove("open");
+
+    if (modalHistoryActive && history.state?.dishDetailOpen) {
+      const state = { ...(history.state || {}) };
+
+      delete state.dishDetailOpen;
+
+      history.replaceState(
+        state,
+        "",
+        window.location.pathname + window.location.search
+      );
     }
 
-    modal.classList.remove("open");
+    modalHistoryActive = false;
+
     restorePageScroll();
   }
 
@@ -414,8 +530,10 @@
     if (mainButton) {
       activeMain = mainButton.dataset.main;
       activeSubcategory = "All";
+
       renderFilters();
       renderItems();
+
       return;
     }
 
@@ -423,6 +541,7 @@
 
     if (subButton) {
       activeSubcategory = subButton.dataset.subcategory;
+
       renderFilters();
       renderItems();
     }
@@ -430,9 +549,13 @@
 
   grid.addEventListener("click", event => {
     const card = event.target.closest("[data-dish-id]");
+
     if (!card) return;
 
-    const item = items.find(entry => String(entry.id) === card.dataset.dishId);
+    const item = items.find(
+      entry => String(entry.id) === card.dataset.dishId
+    );
+
     if (item) openDish(item);
   });
 
@@ -440,24 +563,31 @@
     if (!["Enter", " "].includes(event.key)) return;
 
     const card = event.target.closest("[data-dish-id]");
+
     if (!card) return;
 
     event.preventDefault();
 
-    const item = items.find(entry => String(entry.id) === card.dataset.dishId);
+    const item = items.find(
+      entry => String(entry.id) === card.dataset.dishId
+    );
+
     if (item) openDish(item);
   });
 
   window.addEventListener("popstate", () => {
     const modal = document.getElementById("dishDetailModal");
+
     if (modal?.classList.contains("open")) {
       modalHistoryActive = false;
-      closeDish(false);
+      closeDish();
     }
   });
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeDish(true);
+    if (event.key === "Escape") {
+      closeDish();
+    }
   });
 
   if (searchInput) {
@@ -468,12 +598,19 @@
   }
 
   if (!configured) {
-    showStatus("The digital menu has not been connected yet. Please follow SETUP.md to configure the database.");
+    showStatus(
+      "The digital menu has not been connected yet. Please follow SETUP.md to configure the database."
+    );
+
     return;
   }
 
   if (!window.supabase?.createClient) {
-    showStatus("The menu service could not be initialized. Please refresh and try again.", "error");
+    showStatus(
+      "The menu service could not be initialized. Please refresh and try again.",
+      "error"
+    );
+
     return;
   }
 
@@ -486,19 +623,28 @@
     try {
       const { data, error } = await supabase
         .from("menu_items")
-        .select("id,name,category,main_category,subcategory,description,price,price_display,image_url,is_vegetarian,is_must_try,is_available,created_at")
+        .select(
+          "id,name,category,main_category,subcategory,description,price,price_display,image_url,is_vegetarian,is_must_try,is_available,created_at"
+        )
         .order("main_category", { ascending: true })
         .order("subcategory", { ascending: true })
         .order("name", { ascending: true });
 
       if (error) throw error;
 
-      items = (data || []).filter(item => item.is_available !== false);
+      items = (data || []).filter(
+        item => item.is_available !== false
+      );
+
       renderFilters();
       renderItems();
     } catch (error) {
       console.error("Menu load error:", error);
-      showStatus("We couldn't load the menu right now. Please ask restaurant staff for assistance.", "error");
+
+      showStatus(
+        "We couldn't load the menu right now. Please ask restaurant staff for assistance.",
+        "error"
+      );
     }
   })();
 })();
